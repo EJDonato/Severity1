@@ -14,8 +14,8 @@ It covers the game UI, the board art, the Academy scenes and the Codex. It does 
 
 1. **State is visible.** Load, health, flow and failure show on the machine itself, not only in a panel.
 2. **Never color alone.** Every status and request type has a shape or icon as well as a color (FR-18).
-3. **Flat, warm, readable.** Flat 2D with a small set of tones per object, rounded forms and strong silhouettes. No isometric depth, no gradients except glows.
-4. **Calm by default, loud on purpose.** The board is quiet when healthy; motion, color and sound escalate with severity so that incidents stand out.
+3. **Quiet, white, premium.** A modern, minimalist white interface in the spirit of a premium product page: generous space, large calm type, one accent colour, soft depth. Flat 2D machines with strong silhouettes; no isometric depth, no decorative gradients.
+4. **Calm by default, loud on purpose.** The board is quiet when healthy; ring colour, glow, motion and sound escalate with severity so that incidents stand out against the white page.
 5. **Original and fictional.** All art, names and UI are original. No real company logos, product UI or brand colors. The fictional social network is called Friendbook and has its own mark (section 12) (FR-28).
 6. **Systematic.** Everything comes from tokens, so the slice's greybox art can be restyled without rework.
 
@@ -25,44 +25,44 @@ Tokens live in one JSON source in the `tokens` package and generate CSS custom p
 
 ### 3.1 Color
 
-Default theme is dark (an "ops room" feel that makes glows and alerts read clearly). A light theme is a post-slice option and must use the same semantic names.
+The default theme is light: a white page, light-grey grouped surfaces, and white objects (machines, tiles) that sit on them. A dark theme is a post-launch option and must use the same semantic names. One accent blue carries primary actions, links, selection and focus; everything else is neutral until something needs attention.
 
 **Surfaces and text**
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `bg.0` | `#0E1320` | Board background, page |
-| `bg.1` | `#151C2C` | Panels |
-| `bg.2` | `#1E2740` | Raised panels, inputs |
-| `border.subtle` | `#2A3452` | Decorative dividers only (below 3:1; never the only boundary of a control) |
-| `border.strong` | `#7384AD` | Control boundaries, ports, focus-adjacent edges |
-| `text.primary` | `#E8ECF4` | Body and headings |
-| `text.secondary` | `#A9B3C7` | Supporting text |
-| `accent` | `#6C9CFF` | Primary actions, selection, links |
-| `focus` | `#FFFFFF` | Focus ring (2 px, offset 2 px) |
+| `bg.1` | `#FFFFFF` | Page, machines, tiles, toolbox items, modals |
+| `bg.0` | `#F5F5F7` | Grouped surfaces: panels, board, chapter cards |
+| `border.subtle` | `#E5E5EA` | Hairlines inside lists and tables (decorative; never the only boundary of a control) |
+| `border.strong` | `#8E8E93` | Connections, control boundaries, dashed ghost outlines |
+| `text.primary` (`ink`) | `#1D1D1F` | Body, headings, line art |
+| `text.secondary` | `#6E6E73` | Supporting text |
+| `accent` | `#0066CC` | Primary actions, links, selection, focus ring |
+| `accent.deep` | `#004F9F` | Pressed and hover state of primary actions |
 
-**Status** (always paired with the icon and shape in 3.2)
+**Status** (always paired with the badge shape in 3.2; badge shapes carry an `ink` outline)
 
-| Token | Hex | Meaning |
-| --- | --- | --- |
-| `status.ok` | `#2FBF8F` | Healthy, resolved |
-| `status.warn` | `#F2A93B` | Strained, watch |
-| `status.danger` | `#F26B3A` | Overloaded, degraded |
-| `status.critical` | `#FF5A6E` | Failing, SEV-1, errors |
-| `status.info` | `#5BB8F0` | Neutral information |
+| Token | Hex | Meaning | Text-safe variant |
+| --- | --- | --- | --- |
+| `status.ok` | `#1E9A4B` | Healthy, resolved | `#1B7A3A` |
+| `status.warn` | `#F5B400` | Strained, watch | `#8A5A00` |
+| `status.danger` | `#E0600F` | Overloaded, degraded | `#B34A0A` |
+| `status.critical` | `#E5352B` | Failing, SEV-1, errors | `#C4261D` |
 
 **Request types** (color plus shape; see 3.2)
 
 | Token | Hex | Type |
 | --- | --- | --- |
-| `req.read` | `#5BB8F0` | Reads |
-| `req.write` | `#F2A93B` | Writes |
-| `req.photo` | `#E58FC0` | Photo loads |
-| `req.upload` | `#F0E442` | Uploads |
+| `req.read` | `#0066CC` | Reads |
+| `req.write` | `#9B3FD0` | Writes |
+| `req.photo` | `#E0207F` | Photo loads |
+| `req.upload` | `#008A8A` | Uploads |
+| `req.search` | `#B25E00` | Searches |
+| `req.bot` | `#6E6E73` | Bot traffic |
 
-**Contrast (measured against these exact values).** All text, status and request colors meet 4.5:1 on all three surfaces (lowest is `status.danger` and `status.critical` on `bg.2` at 4.89:1). Primary text is 12.5–15.7:1, secondary text 7.0–8.8:1. `border.strong` is 4.0–5.0:1 on every surface, which satisfies the 3:1 non-text contrast requirement. Dark text (`bg.0`) on every status fill passes at 6.1:1 or better. Any change to a token must re-run the contrast check in CI.
+**Contrast (computed, and asserted in CI by `tokens.test.ts`).** Primary text is 16.8:1 on white and 15.5:1 on the grey surface; secondary text 5.1:1 and 4.7:1; the accent is 5.6:1 on white and 5.1:1 on grey, and white text on the accent fill is 5.6:1. Every text-safe status variant is at least 5.3:1 on white. `border.strong` is 3.3:1 on white, `status.ok` 3.6:1, `status.danger` 3.6:1 and every request colour at least 3.2:1 on white (the grey surface lowers some of these by up to half a point, which is why shapes, not hue, carry meaning). `status.warn` yellow is only 1.8:1 on white, so it is never used alone: the badge shape has a 1.5px `ink` outline (ink against yellow is 9.2:1) and every status also has a text label. Any change to a token must keep this test green.
 
-**Colorblind safety.** The status and request hues follow the Okabe–Ito idea of separating by hue and luminance. Because orange, red and pink can still converge under some deficiencies, no meaning relies on hue alone; every state has a distinct icon and shape. Each palette change is checked in protanopia, deuteranopia and tritanopia simulations.
+**Colorblind safety.** No meaning relies on hue alone. Status uses a distinct badge shape and a text label; request types use distinct particle shapes; mood faces use mouth shape. Each palette change is checked in protanopia, deuteranopia and tritanopia simulations.
 
 ### 3.2 Shapes and icons that carry meaning
 
@@ -78,37 +78,39 @@ Default theme is dark (an "ops room" feel that makes glows and alerts read clear
 | Write request | Square particle | 8 px |
 | Photo load | Diamond particle | 10 px |
 | Upload | Triangle particle | 10 px |
+| Search | Hexagon particle | 10 px |
+| Bot traffic | Grey square particle with a cross | 8 px |
 | Failed request | Any shape in `status.critical` with a cross mark, bouncing back | Always red plus the cross |
 
 ### 3.3 Typography
 
-Fonts are open-licensed, self-hosted, subset to the Latin range, and served as variable files to protect the load budget.
+System font stack only: SF Pro on Apple devices, Helvetica Neue or Arial elsewhere. No font downloads, so type is crisp, native and free from the load budget.
 
-| Role | Face | Sizes (px) | Notes |
+| Role | Stack | Sizes (px) | Notes |
 | --- | --- | --- | --- |
-| UI and lessons | A humanist sans (for example Inter or Source Sans 3) | 14, 16, 20, 24, 32 | Body 16; line height 1.5 for text, 1.25 for headings |
-| Metrics and logs | A monospaced face (for example JetBrains Mono) | 12, 14 | Tabular numbers so values do not jitter |
-| Lesson scene text | Same sans, larger | 20–24 | Short lines; one idea per screen |
+| Display and headings | `-apple-system, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial` | 19, 24, 32, 40 to 72 fluid | Bold, tight tracking (-0.022em to -0.035em), line height 1.05 to 1.15, balanced wrapping |
+| Body and UI | `-apple-system, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial` | 14, 15, 17, 21 | Body 17, line height 1.47, tracking -0.011em |
+| Metrics and logs | `ui-monospace, 'SF Mono', Menlo` for ticks and logs; tabular figures in the sans for tile values | 13, 14, 22 | Tabular numbers so values do not jitter |
 
-Minimum text size is 14 px. All text scales to 200% without loss of function (WCAG 1.4.4); layouts use relative units.
+Minimum text size is 13px for supporting labels and 14px for anything interactive. All text scales to 200% without loss of function (WCAG 1.4.4); layouts use relative units. No label sits above a heading.
 
 ### 3.4 Spacing, grid and shape
 
 - **Spacing scale:** 4, 8, 12, 16, 24, 32, 48 px.
 - **Board grid:** one cell is 48 px at 100% zoom. Machines are 2×2 cells (96 px) by default; the load balancer, CDN and sharded database are 3×2. Ports sit on cell edges.
-- **Radii:** 4 (inputs), 8 (panels), 16 (machines and cards), full (badges).
-- **Elevation:** flat. Hierarchy comes from surface tone and border, not shadows. The only glow is a status glow around a machine or alert.
+- **Radii:** 16 (tiles, toolbox items), 22 (panels, machines), 26 (cards and the board), 30 (lesson frame), 980 (pill buttons, chips).
+- **Elevation:** nearly flat. Hierarchy comes from surface tone (white on grey on white), not borders. Machines carry a soft diffuse shadow that warms to the state colour under load. Floating surfaces (alert, modal) use frosted white with a large soft shadow. A frosted translucent bar sticks to the top.
 - **Z-layers:** board 0, connections 10, machines 20, particles 30, in-board labels 40, panels 100, modals 200, toasts and pager alerts 300.
 
 ### 3.5 Motion
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `motion.fast` | 120 ms | Hover, toggle, press |
-| `motion.base` | 220 ms | Panels, tooltips |
-| `motion.slow` | 400 ms | Scene morphs, camera moves |
-| `ease.standard` | `cubic-bezier(0.2, 0, 0, 1)` | Most transitions |
-| `ease.alert` | `cubic-bezier(0.3, 1.4, 0.5, 1)` | Pager slide-in, small overshoot |
+| `motion.fast` | 150 ms | Hover, toggle, press |
+| `motion.base` | 250 ms | Panels, tooltips |
+| `motion.slow` | 450 ms | Scene morphs, camera moves |
+| `ease.standard` | `cubic-bezier(0.25, 0.1, 0.25, 1)` | Most transitions |
+| `ease.alert` | `cubic-bezier(0.2, 0.9, 0.3, 1.1)` | Pager drop-in, small overshoot |
 
 Rules: motion explains cause and effect, never decorates. Nothing flashes more than three times per second (seizure safety). All motion respects reduced-motion mode (section 9).
 
@@ -119,7 +121,7 @@ Each component in the catalog is an illustrated machine, drawn as a layered SVG 
 ### 4.1 Anatomy and spec
 
 - **Layers (named in the SVG):** `body`, `details` (lights, screens, props), `status-overlay` (glow, smoke, fire, cross hatch), `instance-stack` (copies for scaling), `ports`.
-- **Size and weight:** each symbol under 8 KB optimized; three to five tones per object from the token palette; no strokes thinner than 2 px at 100% zoom.
+- **Size and weight:** each symbol under 8 KB optimized; ink line art on a white tile with at most two supporting tones from the token palette; no strokes thinner than 1.75 px at 100% zoom.
 - **Scaling is physical.** Adding an instance stacks another unit (up to a visible cap, then a "×N" badge). Capacity is readable at a glance.
 - **Ports:** inputs on the left or top, outputs on the right or bottom, drawn as 12 px sockets with the connection-type shape inside (solid, dashed, dotted) so valid pairings are visible.
 
@@ -127,11 +129,11 @@ Each component in the catalog is an illustrated machine, drawn as a layered SVG 
 
 | State | Utilization | Visual change | Icon badge |
 | --- | --- | --- | --- |
-| Healthy | below 60% | Calm lights, base colors | Check circle |
-| Strained | 60–85% | Lights speed up, warm tint on body | Triangle |
-| Overloaded | 85–100% | Orange glow, shaking details, queue visibly growing | Octagon |
-| Failing | over 100% or errors | Red glow, smoke, flames, red failed particles bounce | Flame |
-| Down | crashed or region out | Dark, hatched, cross overlay, no animation | Square cross |
+| Healthy | below 60% | Neutral hairline, soft grey shadow, green load bar | Check circle |
+| Strained | 60–85% | Yellow ring and warm shadow, load bar fills | Triangle |
+| Overloaded | 85–100% | Orange ring and glow, load bar near full, queue visibly growing | Octagon |
+| Failing | over 100% or errors | Red ring, pulsing red glow, red failed particles bounce | Flame |
+| Down | crashed or region out | Dashed outline, greyed, cross badge, no animation | Square cross |
 
 State boundaries are tokens, not hard-coded, and match the engine's `health()` output. The first three states must be distinguishable in grayscale.
 
@@ -251,7 +253,7 @@ Both a colorblind palette check and a reduced-motion check are part of the defin
 ## 12. Brand and legal rules
 
 - The product is **Severity 1**. The in-game fictional network is **Friendbook**, with an original wordmark and logo mark (a simple speech-bubble-and-link motif) created for the project.
-- Do not reference, imitate or recolor any real company's logo, typeface, UI layout or color scheme. Do not use the real brand names in UI text, art, file names or marketing.
+- The visual language borrows only general principles from premium product design (white space, scale, restraint, a native system font); do not reference, imitate or recolor any real company's logo, wordmark, copy, artwork, UI layout or color scheme. Do not use the real brand names in UI text, art, file names or marketing.
 - Real techniques and technologies (caching, sharding, queues) may be named in educational text. Real companies' products are not shown.
 - Fonts, icons, sounds and illustrations must be original or under licenses that permit commercial use and redistribution; the license for each asset is recorded in an asset register.
 - Have a lawyer review the wordmark and the asset register before launch.
@@ -277,7 +279,6 @@ Both a colorblind palette check and a reduced-motion check are part of the defin
 
 ## 15. Open questions
 
-- Light theme: needed for launch, or only dark?
-- Final font choice (the faces above are placeholders until licensing and load size are checked).
+- Dark theme: not needed for launch; the semantic token names allow adding one later.
 - Who creates the original art and sound, and what is the budget? (This is the same open question as in the product PRD.)
 - Whether to commission a small illustration style guide for Academy scenes before the first lesson is drawn.
