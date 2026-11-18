@@ -1,125 +1,119 @@
 ---
 name: Severity 1
-description: A system-design game printed in two inks, where load shows as a machine slipping out of register.
+description: A system-design game in quiet white, one blue, large type and soft depth.
 colors:
-  paper: "#E6EAF6"
-  panel: "#F6F7FC"
-  card: "#FFFFFF"
-  hairline: "#C3CAE3"
-  line-strong: "#4A5798"
-  ink: "#14215C"
-  ink-soft: "#3E4A7E"
-  shell: "#2748C9"
-  shell-deep: "#1B3499"
-  on-shell: "#F6F7FC"
-  ok: "#1DA463"
-  warn: "#FFC72C"
-  danger: "#FF5B2E"
-  critical: "#E5243B"
-  ok-text: "#0B6B3C"
-  warn-text: "#7A5A00"
-  danger-text: "#B33A12"
-  critical-text: "#B3122A"
-  calm-tint: "#CAD3F5"
-  warn-tint: "#FFE9A8"
-  danger-tint: "#FFC9B8"
-  critical-tint: "#FFB8C0"
-  req-read: "#2748C9"
-  req-write: "#7A3FC4"
-  req-photo: "#F0399A"
-  req-upload: "#00A19B"
+  white: "#FFFFFF"
+  surface: "#F5F5F7"
+  hairline: "#E5E5EA"
+  line-strong: "#8E8E93"
+  ink: "#1D1D1F"
+  ink-soft: "#6E6E73"
+  accent: "#0071E3"
+  accent-deep: "#0058B8"
+  ok: "#30B15A"
+  warn: "#F5B400"
+  danger: "#F2701D"
+  critical: "#E5352B"
+  ok-text: "#1B7A3A"
+  warn-text: "#8A5A00"
+  danger-text: "#B34A0A"
+  critical-text: "#C4261D"
+  danger-tint: "#FFEBDD"
+  warn-tint: "#FFF6DB"
+  req-read: "#0071E3"
+  req-write: "#AF52DE"
+  req-photo: "#FF2D92"
+  req-upload: "#00A6A6"
 typography:
   display:
-    fontFamily: "Bricolage Grotesque Variable, system-ui, sans-serif"
-    fontSize: "2.5rem"
-    fontWeight: 800
-    lineHeight: 1.15
-    letterSpacing: "-0.01em"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: "4.5rem"
+    fontWeight: 700
+    lineHeight: 1.05
+    letterSpacing: "-0.035em"
   body:
-    fontFamily: "Hanken Grotesk Variable, system-ui, sans-serif"
-    fontSize: "1rem"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: "1.0625rem"
     fontWeight: 400
-    lineHeight: 1.5
-  data:
-    fontFamily: "JetBrains Mono Variable, ui-monospace, monospace"
-    fontSize: "1.25rem"
-    fontWeight: 600
+    lineHeight: 1.47
+    letterSpacing: "-0.011em"
 rounded:
-  sm: "4px"
+  md: "16px"
+  lg: "22px"
+  xl: "26px"
+  pill: "980px"
 spacing:
-  xs: "4px"
   sm: "8px"
   md: "16px"
   lg: "24px"
+  xl: "56px"
 components:
   button-primary:
-    backgroundColor: "{colors.shell}"
-    textColor: "{colors.on-shell}"
-    rounded: "{rounded.sm}"
-    padding: "4px 14px"
-  button-primary-hover:
-    backgroundColor: "{colors.shell-deep}"
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.white}"
+    rounded: "{rounded.pill}"
+    padding: "0 20px"
+    height: "40px"
   button-default:
-    backgroundColor: "{colors.card}"
+    backgroundColor: "#E8E8ED"
     textColor: "{colors.ink}"
-    rounded: "{rounded.sm}"
-    padding: "4px 14px"
+    rounded: "{rounded.pill}"
+    padding: "0 20px"
+    height: "40px"
   panel:
-    backgroundColor: "{colors.panel}"
+    backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.sm}"
-    padding: "16px"
-  metric-tile-alert:
-    backgroundColor: "{colors.danger-tint}"
+    rounded: "{rounded.lg}"
+    padding: "20px"
+  chapter-card:
+    backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.sm}"
-    padding: "8px 12px"
+    rounded: "{rounded.xl}"
+    padding: "28px"
+  metric-tile:
+    backgroundColor: "{colors.white}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.md}"
+    padding: "12px 14px"
 ---
 
 # Design System: Severity 1
 
 ## Overview
 
-Severity 1 looks like a two-ink print job. Every machine on the board is a keyline plate (ink-blue outline and detail) with a colour plate behind it. When the machine is healthy the plates are in perfect register. As utilization climbs the colour plate slides up and to the right; past capacity it is fully out of register and hatched with halftone dots. A player reads which machine is failing from its body, then reads the number. The wordmark carries the same idea: the "1" is printed twice, yellow and orange, slightly misaligned.
-
-The shell is calm and committed: a riso-blue top band, cool pale paper, white working panels with 1.5px ink hairlines, no shadows. Spot inks are used flat. No mascots, no gradients except a very faint paper drift on the page.
+Quiet, white and generous, in the spirit of modern premium product pages: big confident headlines, lots of air, one blue, soft rounded surfaces, a frosted sticky bar. The interface recedes so the running system on the board is the thing you look at. Nothing here copies any company's marks, copy or artwork; only general principles (space, scale, restraint) are shared.
 
 ## Colors
 
-- **Paper and panels:** `paper` ground, `panel` and `card` for work areas. Text is `ink`, never black; supporting text `ink-soft`.
-- **Shell:** `shell` is the single committed colour field (top bar, primary buttons, selection). Focus rings are 3px `ink` (white on the shell band).
-- **Spot inks (status):** green ok, yellow strained, orange overloaded, red failing. Always paired with a badge shape (check circle, triangle, octagon, flame, crossed square). As text on paper use the `*-text` variants.
-- **Request types:** read blue circle, write violet square, photo pink diamond, upload teal triangle, each with a 1px ink keyline.
-- Never use colour alone: every status also has an icon, and load also moves the plate.
+White page, `surface` grey for grouped panels and the board, white for the things that sit on them (machines, tiles, toolbox items). One accent blue for the primary action, links, selection and focus. Status colours are used only for state, always with a badge shape, and as text only in the darker `*-text` variants (4.5:1 or better on white).
 
 ## Typography
 
-Bricolage Grotesque for headings and the wordmark, Hanken Grotesk for body, JetBrains Mono only for numbers, ticks and units. Minimum text size 14px. Headings use balanced wrapping; no label sits above a heading.
+System font stack only (SF on Apple devices, Helvetica/Arial elsewhere). Display headings are tight and bold, body is 17px. Numbers use tabular figures. Minimum text size 13px for supporting labels, 14px and up for anything interactive.
 
 ## Layout
 
-Operate shell: top bar; level screen is three columns (224px toolbox, flexible board, 316px side rail) collapsing to one column at 1100px with the toolbox as a wrapped row. Board ground is a dot matrix on a 48px cell with registration crosshairs in each corner. Spacing scale 4, 8, 16, 24.
+Centered, max width 1320. The start screen is a single column hero over a grid of chapter cards. The level screen is three columns (232px toolbox, flexible board, 328px side rail), collapsing to one at 1100px with the toolbox as a wrapped row. Generous vertical rhythm: 56 to 72px between hero blocks.
 
 ## Elevation & Depth
 
-Flat. Depth comes from the print metaphor only: an offset colour plate behind the pager alert, and the machine plates themselves. No drop shadows.
+Almost flat. Machines carry a soft diffuse shadow that warms to the state colour under load (yellow, orange, pulsing red when failing). Floating surfaces (alert, modal) use frosted white with a large soft shadow. No borders on cards; hairlines only inside lists and tables.
 
 ## Shapes
 
-4px corners everywhere, 1.5px ink hairlines, 2.5px keylines on machines. Icons are drawn on a 20px grid with a 2px square-cap stroke.
+Large radii: 16 tiles, 22 panels, 26 cards and board, 980 pill buttons and chips. Machines are 22px-radius white tiles; icons are drawn on a 20px grid, 2px stroke.
 
 ## Components
 
-- **Machine:** keyline rect + colour plate (tint by health) offset by `drift` (0 at 55% utilization to full at failure) + halftone overlay when overloaded or failing + badge + label with mono utilization.
-- **Pager:** white card, ink border, colour plate offset behind in the severity colour.
-- **Buttons:** ink-bordered rects; primary fills with `shell`; quiet is an underlined link.
-- **Metric tile:** white; turns `danger-tint` with a warning icon when over target.
-- **Stars:** drawn star icons, yellow-filled when earned.
+- **Machine:** white rounded tile, ink line art, a status badge (check circle, triangle, octagon, flame, crossed square), a thin utilization bar along the bottom, a ring in the state colour when not healthy.
+- **Buttons:** pill. Primary blue, default light grey, quiet blue text link.
+- **Alert (pager):** floating frosted card with a severity icon; no coloured block.
+- **Metric tile:** white card, large number, small label; turns soft orange with a warning icon when over target.
+- **Stars:** yellow filled star icons when earned.
 
 ## Do's and Don'ts
 
-- Do express load by plate drift and halftone before any number.
-- Do keep every status shape-coded and every text at 4.5:1 or better.
-- Don't add drop shadows, gradients, mascots, emoji or Unicode glyph icons.
-- Don't put a kicker label above a heading, or use mono as decoration.
-- Don't introduce a colour outside the spot-ink set.
+- Do give things room; prefer one clear action per view.
+- Do keep every status shape-coded and text at 4.5:1 or better.
+- Don't add gradients, hard borders, heavy shadows, emoji, or a second accent colour.
+- Don't set a small label above a heading.

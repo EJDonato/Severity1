@@ -7,10 +7,6 @@ const SIZE: Record<CType, [number, number]> = { users: [2, 2], app: [2, 2], db: 
 const HEALTH_COLOR: Record<Health, string> = { healthy: color.ok, strained: color.warn, overloaded: color.danger, failing: color.critical, down: color.borderStrong }
 const HEALTH_LABEL: Record<Health, string> = { healthy: 'healthy', strained: 'strained', overloaded: 'overloaded', failing: 'failing', down: 'down' }
 const REQ_COLOR = { read: color.read, write: color.write, photo: color.photo, upload: color.upload }
-const TINT: Record<Health, string> = { healthy: color.calmTint, strained: color.warnTint, overloaded: color.dangerTint, failing: color.criticalTint, down: color.borderSubtle }
-// How far the colour plate slides off the keyline: 0 = perfect register, 1 = fully out.
-const drift = (health: Health, util: number) => (health === 'down' ? 0 : health === 'failing' ? 1 : Math.max(0, Math.min(0.85, (util - 0.55) / 0.5)))
-
 const px = (n: DNode) => ({ x: n.x * CELL, y: n.y * CELL, w: SIZE[n.type][0] * CELL, h: SIZE[n.type][1] * CELL })
 
 interface Props {
@@ -31,7 +27,7 @@ function Badge({ health, x, y }: { health: Health; x: number; y: number }) {
   const c = HEALTH_COLOR[health]
   return (
     <g transform={`translate(${x},${y})`} aria-hidden>
-      <circle r={12} fill={color.bg1} stroke={color.ink} strokeWidth={1.5} />
+      <circle r={12} fill={color.bg1} stroke={color.borderSubtle} strokeWidth={1.5} />
       {health === 'healthy' && <><circle r={8} fill={c} /><path d="M-4 0l3 3 5-6" stroke={color.ink} strokeWidth={2.2} fill="none" /></>}
       {health === 'strained' && <><path d="M0-8L8 7H-8Z" fill={c} /><path d="M0-3v5M0 4v1" stroke={color.ink} strokeWidth={2} /></>}
       {health === 'overloaded' && <><path d="M-3-8h6l5 5v6l-5 5h-6l-5-5v-6z" fill={c} /><path d="M0-4v5M0 4v1" stroke={color.ink} strokeWidth={2} /></>}
@@ -45,7 +41,7 @@ function Face({ mood, cx, cy }: { mood: Mood; cx: number; cy: number }) {
   const mouth = mood === 'happy' ? 'M-6 3Q0 10 6 3' : mood === 'impatient' ? 'M-6 6H6' : 'M-6 8Q0 1 6 8'
   return (
     <g transform={`translate(${cx},${cy})`}>
-      <circle r={13} fill={color.bg2} stroke={color.ink} strokeWidth={2} />
+      <circle r={13} fill={color.bg1} stroke={color.ink} strokeWidth={1.75} />
       <circle cx={-5} cy={-3} r={1.8} fill={color.textPrimary} />
       <circle cx={5} cy={-3} r={1.8} fill={color.textPrimary} />
       <path d={mouth} stroke={color.textPrimary} strokeWidth={2} fill="none" strokeLinecap="round" />
@@ -55,20 +51,21 @@ function Face({ mood, cx, cy }: { mood: Mood; cx: number; cy: number }) {
 
 function Art({ type, w, h, util, mood }: { type: CType; w: number; h: number; util: number; mood: Mood }) {
   const line = color.ink
+  const soft = color.bg0
   if (type === 'users') return <><Face mood={mood} cx={w * 0.3} cy={h * 0.42} /><Face mood={mood} cx={w * 0.7} cy={h * 0.42} /><Face mood={mood} cx={w * 0.5} cy={h * 0.68} /></>
   if (type === 'app')
     return <>{[0, 1, 2].map((i) => (
-      <g key={i}><rect x={14} y={14 + i * 22} width={w - 28} height={16} rx={4} fill={color.bg2} stroke={line} strokeWidth={2} />
-        <circle className="blink" cx={26} cy={22 + i * 22} r={3} fill={color.shell} style={{ animationDuration: `${Math.max(0.25, 1.4 - util)}s`, animationDelay: `${i * 0.2}s` }} />
+      <g key={i}><rect x={14} y={14 + i * 22} width={w - 28} height={16} rx={4} fill={soft} stroke={line} strokeWidth={1.75} />
+        <circle className="blink" cx={26} cy={22 + i * 22} r={3} fill={color.accent} style={{ animationDuration: `${Math.max(0.25, 1.4 - util)}s`, animationDelay: `${i * 0.2}s` }} />
         <rect x={40} y={20 + i * 22} width={w - 64} height={4} rx={2} fill={line} /></g>
     ))}</>
   if (type === 'db')
-    return <><ellipse cx={w / 2} cy={26} rx={30} ry={9} fill={color.bg2} stroke={line} strokeWidth={2} /><path d={`M${w / 2 - 30} 26v38c0 5 13 9 30 9s30-4 30-9V26`} fill={color.bg2} stroke={line} strokeWidth={2} />
+    return <><ellipse cx={w / 2} cy={26} rx={30} ry={9} fill={soft} stroke={line} strokeWidth={1.75} /><path d={`M${w / 2 - 30} 26v38c0 5 13 9 30 9s30-4 30-9V26`} fill={soft} stroke={line} strokeWidth={1.75} />
       <path d={`M${w / 2 - 30} 45c0 5 13 9 30 9s30-4 30-9`} fill="none" stroke={line} strokeWidth={2} /></>
   if (type === 'storage')
-    return <>{[[16, 40], [48, 40], [32, 14]].map(([x, y], i) => <g key={i}><rect x={x} y={y + 8} width={28} height={26} rx={3} fill={color.bg2} stroke={line} strokeWidth={2} /><path d={`M${x} ${y + 18}h28`} stroke={line} strokeWidth={2} /></g>)}</>
+    return <>{[[16, 40], [48, 40], [32, 14]].map(([x, y], i) => <g key={i}><rect x={x} y={y + 8} width={28} height={26} rx={3} fill={soft} stroke={line} strokeWidth={1.75} /><path d={`M${x} ${y + 18}h28`} stroke={line} strokeWidth={2} /></g>)}</>
   return <>{[0, 1, 2].map((i) => <path key={i} d={`M16 ${28 + i * 20}H${w * 0.45}L${w - 16} ${20 + i * 28}`} stroke={line} strokeWidth={3} fill="none" strokeLinecap="round" />)}
-    <circle cx={w * 0.45} cy={h / 2} r={8} fill={color.bg2} stroke={line} strokeWidth={2} /></>
+    <circle cx={w * 0.45} cy={h / 2} r={8} fill={soft} stroke={line} strokeWidth={1.75} /></>
 }
 
 function edgePath(a: DNode, b: DNode) {
@@ -106,25 +103,20 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
     <div className="board" style={{ aspectRatio: `${bounds.w} / ${bounds.h}` }}>
       <svg viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`} role="group" aria-label="Design board">
         <defs>
-          <pattern id="grid" width={CELL} height={CELL} patternUnits="userSpaceOnUse"><circle cx={0} cy={0} r={1.6} fill={color.borderStrong} opacity={0.55} /></pattern>
-          <pattern id="halftone" width={7} height={7} patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><circle cx={3.5} cy={3.5} r={1.7} fill={color.ink} opacity={0.5} /></pattern>
+          <pattern id="grid" width={CELL} height={CELL} patternUnits="userSpaceOnUse"><circle cx={0} cy={0} r={1.4} fill={color.dot} /></pattern>
         </defs>
-        <rect x={bounds.x} y={bounds.y} width={bounds.w} height={bounds.h} fill={color.bg1} />
         <rect x={bounds.x} y={bounds.y} width={bounds.w} height={bounds.h} fill="url(#grid)" />
-        {[[bounds.x + 16, bounds.y + 16], [bounds.x + bounds.w - 16, bounds.y + 16], [bounds.x + 16, bounds.y + bounds.h - 16], [bounds.x + bounds.w - 16, bounds.y + bounds.h - 16]].map(([cx, cy], i) => (
-          <g key={i} stroke={color.ink} strokeWidth={1.5} fill="none" aria-hidden><circle cx={cx} cy={cy} r={6} /><path d={`M${cx - 11} ${cy}h22M${cx} ${cy - 11}v22`} /></g>
-        ))}
         {edges.map(({ e, d }) => {
           const st = snap?.edges.find((x) => x.from === e.from && x.to === e.to)
           const flow = st ? REQ_TYPES.reduce((s, t) => s + st.flow[t], 0) : 0
-          return <path key={`${e.from}>${e.to}`} d={d} fill="none" stroke={st && st.failFrac > 0 ? color.critical : color.ink} strokeWidth={reduced ? 2 + Math.min(10, flow / 25) : 2.5} strokeDasharray={reduced && flow > 0 ? '10 6' : undefined} className={reduced && flow > 0 ? 'flow-dash' : undefined} />
+          return <path key={`${e.from}>${e.to}`} d={d} fill="none" stroke={st && st.failFrac > 0 ? color.critical : color.borderStrong} strokeLinecap="round" strokeWidth={reduced ? 2 + Math.min(10, flow / 25) : 2} strokeDasharray={reduced && flow > 0 ? '10 6' : undefined} className={reduced && flow > 0 ? 'flow-dash' : undefined} />
         })}
         {ghosts.map((g) => {
           const { x, y, w, h } = px(g)
           return (
             <g key={g.id} className="ghost" tabIndex={0} role="button" aria-label={`Place ${PARAMS[g.type].label} here`} onClick={() => onGhost?.(g.type)} onKeyDown={(k) => (k.key === 'Enter' || k.key === ' ') && onGhost?.(g.type)}>
-              <rect x={x} y={y} width={w} height={h} rx={4} fill="none" stroke={color.shell} strokeWidth={2.5} strokeDasharray="8 6" />
-              <text x={x + w / 2} y={y + h + 20} textAnchor="middle" fill={color.shell} fontSize={15} fontWeight={600}>{PARAMS[g.type].label}</text>
+              <rect x={x} y={y} width={w} height={h} rx={22} fill="none" stroke={color.borderStrong} strokeWidth={1.75} strokeDasharray="6 6" />
+              <text x={x + w / 2} y={y + h + 22} textAnchor="middle" fill={color.textSecondary} fontSize={15} fontWeight={500}>{PARAMS[g.type].label}</text>
             </g>
           )
         })}
@@ -133,25 +125,25 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
           const st = snap?.nodes[n.id]
           const health: Health = st?.health ?? 'healthy'
           const isSel = selected === n.id
-          const k = drift(health, st?.util ?? 0)
           return (
             <g key={n.id} transform={`translate(${x},${y})`} className={`machine h-${health}${focus === n.id ? ' focus-pulse' : ''}`} tabIndex={0} role="button"
               aria-label={`${PARAMS[n.type].label}, ${HEALTH_LABEL[health]}${st && n.type !== 'users' ? `, ${Math.round(st.util * 100)}% utilization` : ''}, ${n.instances} instance${n.instances > 1 ? 's' : ''}${linkFrom === n.id ? ', connecting' : ''}`}
               aria-pressed={isSel} onClick={() => onNode?.(n.id)} onKeyDown={(k) => (k.key === 'Enter' || k.key === ' ') && (k.preventDefault(), onNode?.(n.id))}>
               {n.type !== 'users' && n.type !== 'lb' && Array.from({ length: Math.min(3, n.instances - 1) }, (_, i) => (
-                <rect key={i} x={(i + 1) * 6} y={-(i + 1) * 6} width={w} height={h} rx={4} fill={color.bg1} stroke={color.ink} strokeWidth={2} />
+                <rect key={i} x={(i + 1) * 7} y={-(i + 1) * 7} width={w} height={h} rx={22} fill={color.bg1} stroke={color.borderStrong} strokeWidth={1.5} />
               ))}
-              <g className="plate" style={{ transform: `translate(${(k * 10).toFixed(1)}px, ${(-k * 7).toFixed(1)}px)` }}>
-                <rect width={w} height={h} rx={4} fill={TINT[health]} />
-                {(health === 'overloaded' || health === 'failing') && <rect width={w} height={h} rx={4} fill="url(#halftone)" opacity={health === 'failing' ? 1 : 0.5} />}
-              </g>
-              <rect className="body" width={w} height={h} rx={4} fill="none" stroke={color.ink} strokeWidth={2.5} strokeDasharray={health === 'down' ? '6 4' : undefined} />
-              {(isSel || linkFrom === n.id) && <rect className="sel" x={-6} y={-6} width={w + 12} height={h + 12} rx={7} fill="none" stroke={color.shell} strokeWidth={3} strokeDasharray={linkFrom === n.id ? '8 5' : undefined} />}
+              <rect className="body" width={w} height={h} rx={22} fill={color.bg1} stroke={health === 'healthy' ? color.borderSubtle : HEALTH_COLOR[health]} strokeWidth={health === 'healthy' ? 1.5 : 2.5} strokeDasharray={health === 'down' ? '6 4' : undefined} />
+              {(isSel || linkFrom === n.id) && <rect className="sel" x={-6} y={-6} width={w + 12} height={h + 12} rx={27} fill="none" stroke={color.accent} strokeWidth={3} strokeDasharray={linkFrom === n.id ? '8 5' : undefined} />}
+              {st && n.type !== 'users' && (
+                <g aria-hidden>
+                  <rect x={16} y={h - 15} width={w - 32} height={5} rx={2.5} fill={color.borderSubtle} />
+                  <rect className="util" x={16} y={h - 15} width={Math.max(0, (w - 32) * Math.min(1, st.util))} height={5} rx={2.5} fill={HEALTH_COLOR[health]} />
+                </g>
+              )}
               <Art type={n.type} w={w} h={h} util={st?.util ?? 0} mood={mood} />
-              {st && st.queue > 0.05 && <rect x={10} y={h - 12} width={(w - 20) * Math.min(1, st.queue)} height={6} fill={color.critical} stroke={color.ink} strokeWidth={1} />}
               <Badge health={health} x={w - 4} y={4} />
-              {n.instances > 1 && <text x={w - 8} y={h - 16} textAnchor="end" fill={color.ink} fontSize={14} fontFamily="var(--mono)">×{n.instances}</text>}
-              <text x={w / 2} y={h + 20} textAnchor="middle" fill={color.ink} fontSize={15} fontWeight={600}>{PARAMS[n.type].label}{st && n.type !== 'users' ? <tspan fontFamily="var(--mono)" fontWeight={500}>{` ${Math.round(st.util * 100)}%`}</tspan> : null}</text>
+              {n.instances > 1 && <text x={w - 8} y={h - 24} textAnchor="end" fill={color.textSecondary} fontSize={14} fontFamily="var(--mono)">×{n.instances}</text>}
+              <text x={w / 2} y={h + 24} textAnchor="middle" fill={color.ink} fontSize={15} fontWeight={600}>{PARAMS[n.type].label}{st && n.type !== 'users' ? <tspan fill={color.textSecondary} fontWeight={500}>{` ${Math.round(st.util * 100)}%`}</tspan> : null}</text>
             </g>
           )
         })}
@@ -221,7 +213,6 @@ function Particles({ design, snap, bounds, scaleN, speed }: { design: Design; sn
           else if (p.type === 'photo') { ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 6); ctx.lineTo(x - 6, y) }
           else { ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y + 5); ctx.lineTo(x - 6, y + 5) }
           ctx.fill()
-          if (!p.failed) { ctx.strokeStyle = color.ink; ctx.lineWidth = 1; ctx.stroke() }
           if (p.failed) { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke() }
         }
         ctx.globalAlpha = 1

@@ -33,7 +33,7 @@ Core loop: learn (Academy lesson), build (place and wire components), simulate (
 
 - Product is Severity 1; in-game network is Friendbook with an original wordmark. FR-28: original art only, no real company names, logos, UI imitation or brand colours.
 - Flat 2D art, not isometric. Calm when healthy, loud on purpose when failing.
-- Confirmed by the user for this redesign: the whole game is in scope; the accessibility rules above are binding but palette, type, materials and mood are open (the Design System PRD's dark ops-room tokens are not binding).
+- Confirmed by the user (second redesign): the look must be completely modern, minimalist, white and premium, in the spirit of an Apple-style website (space, scale, restraint). Accessibility rules above stay binding. No copying of any company's marks or artwork.
 - Must not feel childish or cartoon-mascot.
 
 ## Evidence on Hand

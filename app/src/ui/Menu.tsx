@@ -1,22 +1,33 @@
 import { useState } from 'react'
 import { CHECK, LESSONS, LEVELS, levelById } from '../content'
 import { useGame } from '../session/store'
-import { Icon, Wordmark } from './Icon'
+import { Icon } from './Icon'
 
 export function Menu() {
   const g = useGame()
   const done = (i: number) => !!g.stars[LEVELS[i].id]?.ship
   const allDone = LEVELS.every((_, i) => done(i))
+  const started = g.lessonsDone.length > 0
+  const start = () => {
+    const i = LEVELS.findIndex((l) => !g.stars[l.id]?.ship)
+    const l = LEVELS[i < 0 ? 0 : i]
+    const lesson = l.lessons.find((x) => !g.lessonsDone.includes(x))
+    if (lesson) g.go({ name: 'lesson', id: lesson }); else g.enterLevel(l.id)
+  }
   return (
     <div className="menu">
-      <section className="panel hero">
-        <h1><Wordmark size={56} /></h1>
-        <p className="big">Build Friendbook from a dorm-room site to a global network. Learn a concept, build with it, then watch real traffic stress it.</p>
+      <section className="hero">
+        <h1>See how systems<br />really work.</h1>
+        <p className="lede">Build Friendbook from a dorm-room site into a global network. Learn a concept, build with it, then watch real traffic push it until it breaks.</p>
+        <div className="row center">
+          <button className="btn primary large" onClick={start}>{started ? 'Continue' : 'Start learning'}</button>
+          {g.check.before === undefined && <button className="btn quiet large" onClick={() => g.go({ name: 'check', phase: 'before' })}>Take the 1-minute check <Icon name="next" size={16} /></button>}
+        </div>
+        {g.check.before !== undefined && <p className="muted small">Starting check: {g.check.before}/100{g.check.after !== undefined ? `, now ${g.check.after}/100 (${g.check.after - g.check.before >= 0 ? '+' : ''}${g.check.after - g.check.before})` : ''}</p>}
         <p className="muted small">Progress is not saved. Each visit starts fresh.</p>
-        {g.check.before === undefined && <button className="btn" onClick={() => g.go({ name: 'check', phase: 'before' })}>Take the 1-minute "explain this architecture" check</button>}
-        {g.check.before !== undefined && <p className="muted small">Starting check: {g.check.before}/100{g.check.after !== undefined ? ` → now ${g.check.after}/100 (${g.check.after - g.check.before >= 0 ? '+' : ''}${g.check.after - g.check.before})` : ''}</p>}
       </section>
 
+      <h2 className="section-title">Chapters</h2>
       <section aria-label="Chapters" className="chapters">
         {LEVELS.map((l, i) => {
           const unlocked = i === 0 || done(i - 1)

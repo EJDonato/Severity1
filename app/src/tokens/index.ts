@@ -1,23 +1,21 @@
-// One source for design tokens. Hex values live only here. World: two-ink print ("registration").
-// Contrast (measured): ink on paper 12.9:1, inkSoft on paper 6.4:1, paper on shell 7.2:1, ink on every spot-ink fill 4.9:1 or better.
+// One source for design tokens. Hex values live only here. World: quiet white, one blue, soft depth.
+// Contrast (measured): ink on white 16.6:1, textSecondary on white 5.1:1 and on page grey 4.7:1, white on accent 4.6:1,
+// each *Text variant on white >= 4.5:1.
 export const color = {
-  // paper and ink
-  bg0: '#E6EAF6', bg1: '#F6F7FC', bg2: '#FFFFFF',
-  borderSubtle: '#C3CAE3', borderStrong: '#4A5798',
-  textPrimary: '#14215C', textSecondary: '#3E4A7E',
-  ink: '#14215C', paper: '#E6EAF6',
-  shell: '#2748C9', shellDeep: '#1B3499', onShell: '#F6F7FC',
-  accent: '#2748C9', focus: '#14215C',
-  // spot inks, always paired with a shape (status) or a particle shape (request)
-  ok: '#1DA463', warn: '#FFC72C', danger: '#FF5B2E', critical: '#E5243B', info: '#2748C9',
-  // darker text-safe variants of the spot inks (colour as text on paper)
-  okText: '#0B6B3C', warnText: '#7A5A00', dangerText: '#B33A12', criticalText: '#B3122A',
-  // tints for plates
-  okTint: '#BFE8D2', warnTint: '#FFE9A8', dangerTint: '#FFC9B8', criticalTint: '#FFB8C0', calmTint: '#CAD3F5',
-  read: '#2748C9', write: '#7A3FC4', photo: '#F0399A', upload: '#00A19B',
+  bg0: '#F5F5F7', bg1: '#FFFFFF', bg2: '#FFFFFF',
+  borderSubtle: '#E5E5EA', borderStrong: '#8E8E93', dot: '#D8D8DD',
+  textPrimary: '#1D1D1F', textSecondary: '#6E6E73',
+  ink: '#1D1D1F', paper: '#F5F5F7',
+  shell: '#0071E3', shellDeep: '#0058B8', onShell: '#FFFFFF',
+  accent: '#0071E3', focus: '#0071E3',
+  // status colours, always paired with a badge shape
+  ok: '#30B15A', warn: '#F5B400', danger: '#F2701D', critical: '#E5352B', info: '#0071E3',
+  okText: '#1B7A3A', warnText: '#8A5A00', dangerText: '#B34A0A', criticalText: '#C4261D',
+  okTint: '#E8F6EE', warnTint: '#FFF6DB', dangerTint: '#FFEBDD', criticalTint: '#FFE5E3', calmTint: '#EAF2FE',
+  read: '#0071E3', write: '#AF52DE', photo: '#FF2D92', upload: '#00A6A6',
 } as const
 
-export const motion = { fast: '120ms', base: '220ms', slow: '400ms', standard: 'cubic-bezier(0.2, 0, 0, 1)', alert: 'cubic-bezier(0.3, 1.4, 0.5, 1)' }
+export const motion = { fast: '150ms', base: '250ms', slow: '450ms', standard: 'cubic-bezier(0.25, 0.1, 0.25, 1)', alert: 'cubic-bezier(0.2, 0.9, 0.3, 1.1)' }
 export const CELL = 48
 
 const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)

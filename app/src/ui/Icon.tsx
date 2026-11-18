@@ -26,12 +26,11 @@ export function Icon({ name, size = 18, filled, className }: { name: IconName; s
 
 export const sevIcon = (s: number): IconName => (s === 3 ? 'warn' : s === 2 ? 'octagon' : 'flame')
 
-// Wordmark: the numeral is printed twice and slightly out of register. This is the product's signature in one glyph.
-export function Wordmark({ size = 26 }: { size?: number }) {
+// Wordmark: set type only. The numeral takes the accent colour.
+export function Wordmark({ size = 20 }: { size?: number }) {
   return (
     <span className="wordmark" style={{ fontSize: size }} aria-label="Severity 1">
-      <span aria-hidden>Severity</span>
-      <span className="one" aria-hidden><span className="plate-b">1</span><span className="plate-a">1</span></span>
+      <span aria-hidden>Severity</span><span className="one" aria-hidden>1</span>
     </span>
   )
 }
