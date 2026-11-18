@@ -4,16 +4,16 @@ import { LESSONS, levelById } from '../content'
 import { PARAMS } from '../schema'
 import type { CType, Design } from '../schema'
 import { SPEEDS, useGame } from '../session/store'
+import { Icon, sevIcon } from './Icon'
 
 const ALL: CType[] = ['users', 'app', 'lb', 'db', 'storage']
 const costOf = (d: Design) => d.nodes.reduce((s, n) => s + PARAMS[n.type].cost * (n.type === 'lb' ? 1 : n.instances), 0)
 
-function Tile({ label, value, bad, icon }: { label: string; value: string; bad?: boolean; icon: string }) {
+function Tile({ label, value, bad }: { label: string; value: string; bad?: boolean }) {
   return (
     <div className={`tile${bad ? ' bad' : ''}`}>
       <span className="tile-label">{label}</span>
-      <span className="tile-value">{bad ? <span aria-hidden>▲ </span> : null}{value}<span className="sr-only">{bad ? ' (over target)' : ''}</span></span>
-      <span className="tile-icon" aria-hidden>{icon}</span>
+      <span className="tile-value">{bad ? <Icon name="warn" size={16} /> : null}{value}<span className="sr-only">{bad ? ' (over target)' : ''}</span></span>
     </div>
   )
 }
@@ -36,7 +36,7 @@ export function LevelScreen({ id }: { id: string }) {
   return (
     <div className="level">
       <header className="level-head">
-        <button className="btn quiet" onClick={() => g.go({ name: 'menu' })}>← Chapters</button>
+        <button className="btn quiet" onClick={() => g.go({ name: 'menu' })}><Icon name="back" /> Chapters</button>
         <div>
           <h2>{level.title}</h2>
           <p className="muted">{level.story}</p>
@@ -50,7 +50,7 @@ export function LevelScreen({ id }: { id: string }) {
             const ok = level.placeable.includes(t) && LESSONS.filter((l) => (l.unlocks as string[]).includes(t)).every((l) => g.lessonsDone.includes(l.id))
             return (
               <button key={t} className="toolitem" disabled={!ok} onClick={() => g.place(t)} aria-label={ok ? `Add ${PARAMS[t].label}` : `${PARAMS[t].label}, locked. Unlocks in: ${unlockLesson(t)}`}>
-                <span>{ok ? '＋' : '🔒'} {PARAMS[t].label}</span>
+                <span className="toolname"><Icon name={ok ? 'plus' : 'lock'} /> {PARAMS[t].label}</span>
                 <span className="muted small">{ok ? (PARAMS[t].cost ? `$${PARAMS[t].cost}/mo` : 'free') : `unlocks in: ${unlockLesson(t) || 'a later chapter'}`}</span>
               </button>
             )
@@ -115,12 +115,12 @@ export function LevelScreen({ id }: { id: string }) {
             <div className="panel metrics" aria-label="Live metrics">
               <h3>Live metrics</h3>
               <div className="tiles">
-                <Tile icon="⇄" label="Requests/s" value={m ? m.rps.toFixed(0) : '–'} />
-                <Tile icon="◷" label="p50" value={m ? `${Math.round(m.p50)} ms` : '–'} />
-                <Tile icon="◷" label="p95" value={m ? `${Math.round(m.p95)} ms` : '–'} bad={!!m && m.p95 > level.slo.p95Ms} />
-                <Tile icon="✕" label="Errors" value={m ? `${(m.errorRate * 100).toFixed(1)}%` : '–'} bad={!!m && m.errorRate > level.slo.errorRate} />
-                <Tile icon="$" label="Cost/mo" value={`$${m ? m.cost : costOf(design)}`} bad={(m ? m.cost : costOf(design)) > level.budget} />
-                <Tile icon="✓" label="Available" value={m ? `${(m.availability * 100).toFixed(1)}%` : '–'} />
+                <Tile label="Requests/s" value={m ? m.rps.toFixed(0) : '–'} />
+                <Tile label="p50" value={m ? `${Math.round(m.p50)} ms` : '–'} />
+                <Tile label="p95" value={m ? `${Math.round(m.p95)} ms` : '–'} bad={!!m && m.p95 > level.slo.p95Ms} />
+                <Tile label="Errors" value={m ? `${(m.errorRate * 100).toFixed(1)}%` : '–'} bad={!!m && m.errorRate > level.slo.errorRate} />
+                <Tile label="Cost/mo" value={`$${m ? m.cost : costOf(design)}`} bad={(m ? m.cost : costOf(design)) > level.budget} />
+                <Tile label="Available" value={m ? `${(m.availability * 100).toFixed(1)}%` : '–'} />
               </div>
               <p className="muted small">Goal: p95 under {level.slo.p95Ms} ms, errors under {(level.slo.errorRate * 100).toFixed(0)}%, budget ${level.budget}/mo.</p>
             </div>
@@ -132,7 +132,7 @@ export function LevelScreen({ id }: { id: string }) {
             <ul className="incidents" aria-live="polite">
               {g.timeline.slice(-6).map((t, i) => (
                 <li key={i} className={t.resolved ? 'ok' : `sev${t.severity}`}>
-                  <span aria-hidden>{t.resolved ? '✔' : t.severity === 3 ? '▲' : t.severity === 2 ? '⯃' : '🔥'}</span> <span className="mono small">t{t.tick}</span> {t.resolved ? `Resolved: ${t.text.replace(/^SEV-\d: /, '')}` : t.text}
+                  <Icon name={t.resolved ? 'check' : sevIcon(t.severity)} /> <span className="mono small">t{t.tick}</span> {t.resolved ? `Resolved: ${t.text.replace(/^SEV-\d: /, '')}` : t.text}
                 </li>
               ))}
             </ul>
@@ -153,10 +153,13 @@ export function LevelScreen({ id }: { id: string }) {
 
       {g.pager && (
         <div className={`pager sev${g.pager.severity}`} role="alert">
-          <span aria-hidden>{g.pager.severity === 3 ? '▲' : g.pager.severity === 2 ? '⯃' : '🔥'}</span>
-          <div><strong>{g.pager.name}</strong><div className="small">Check the highlighted machine and the inspect panel.</div></div>
-          <button className="btn small" onClick={() => { g.clickNode(g.pager!.node); g.dismissPager() }}>Go to</button>
-          <button className="btn quiet small" onClick={g.dismissPager} aria-label="Dismiss alert">✕</button>
+          <span className="pager-plate" aria-hidden />
+          <div className="pager-card">
+            <Icon name={sevIcon(g.pager.severity)} size={26} />
+            <div><strong>{g.pager.name}</strong><div className="small">Check the highlighted machine and the inspect panel.</div></div>
+            <button className="btn small" onClick={() => { g.clickNode(g.pager!.node); g.dismissPager() }}>Go to</button>
+            <button className="btn quiet small" onClick={g.dismissPager} aria-label="Dismiss alert"><Icon name="close" /></button>
+          </div>
         </div>
       )}
 
@@ -165,14 +168,14 @@ export function LevelScreen({ id }: { id: string }) {
           <div className="modal panel" role="dialog" aria-modal="true" aria-label="Run result">
             <h2>{result.stars.ship ? 'Shipped!' : 'Not there yet'}</h2>
             <ul className="slos">
-              {result.slos.map((s) => <li key={s.name} className={s.pass ? 'ok' : 'bad'}><span aria-hidden>{s.pass ? '✔' : '✕'}</span> {s.name}: {s.measured} <span className="muted">({s.target})</span></li>)}
-              {result.missing.length > 0 && <li className="bad"><span aria-hidden>✕</span> Design is missing: {result.missing.map((t) => PARAMS[t].label).join(', ')}</li>}
-              <li className={result.cost <= level.budget ? 'ok' : 'bad'}><span aria-hidden>{result.cost <= level.budget ? '✔' : '✕'}</span> Cost ${result.cost}/mo <span className="muted">(budget ${level.budget})</span></li>
+              {result.slos.map((s) => <li key={s.name} className={s.pass ? 'ok' : 'bad'}><Icon name={s.pass ? 'check' : 'cross'} /> {s.name}: {s.measured} <span className="muted">({s.target})</span></li>)}
+              {result.missing.length > 0 && <li className="bad"><Icon name="cross" /> Design is missing: {result.missing.map((t) => PARAMS[t].label).join(', ')}</li>}
+              <li className={result.cost <= level.budget ? 'ok' : 'bad'}><Icon name={result.cost <= level.budget ? 'check' : 'cross'} /> Cost ${result.cost}/mo <span className="muted">(budget ${level.budget})</span></li>
             </ul>
             <div className="stars" aria-label="Stars earned">
-              <span className={result.stars.ship ? 'on' : ''}>★ Ship it</span>
-              <span className={result.stars.thrifty ? 'on' : ''}>★ Thrifty</span>
-              <span className={result.stars.senior ? 'on' : ''}>★ Senior engineer</span>
+              <span className={result.stars.ship ? 'on' : ''}><Icon name="star" filled={result.stars.ship} size={22} /> Ship it</span>
+              <span className={result.stars.thrifty ? 'on' : ''}><Icon name="star" filled={result.stars.thrifty} size={22} /> Thrifty</span>
+              <span className={result.stars.senior ? 'on' : ''}><Icon name="star" filled={result.stars.senior} size={22} /> Senior engineer</span>
             </div>
             {result.stars.fromReference && <p className="muted small">Stars from a reference start are marked as such.</p>}
             <div className="row">

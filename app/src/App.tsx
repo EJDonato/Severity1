@@ -5,6 +5,7 @@ import { telemetry } from './telemetry'
 import { Check, Debrief, Menu } from './ui/Menu'
 import { LessonScreen } from './ui/Lesson'
 import { LevelScreen } from './ui/Level'
+import { Wordmark } from './ui/Icon'
 
 export default function App() {
   const g = useGame()
@@ -16,7 +17,7 @@ export default function App() {
     <>
       <a className="skip" href="#main">Skip to content</a>
       <header className="topbar">
-        <button className="brand" onClick={() => g.go({ name: 'menu' })}>Severity 1</button>
+        <button className="brand" onClick={() => g.go({ name: 'menu' })} aria-label="Severity 1, home"><Wordmark /></button>
         <label className="small"><input type="checkbox" checked={g.settings.reducedMotion} onChange={(e) => g.setReduced(e.target.checked)} /> Reduced motion</label>
       </header>
       {!g.consentAsked && (

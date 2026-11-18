@@ -5,6 +5,7 @@ import { Sim, applyTo } from '../engine/sim'
 import { telemetry } from '../telemetry'
 import type { Design, Lesson, Level, Snapshot } from '../schema'
 import { useGame } from '../session/store'
+import { Icon } from './Icon'
 
 const BEATS = ['Story', 'Analogy', 'Try it', 'Predict', 'Done'] as const
 const CYCLE = 1_000_000
@@ -63,7 +64,7 @@ export function LessonScreen({ id }: { id: string }) {
   return (
     <div className="lesson panel">
       <div className="row between">
-        <button className="btn quiet" onClick={() => g.go({ name: 'menu' })}>← Chapters</button>
+        <button className="btn quiet" onClick={() => g.go({ name: 'menu' })}><Icon name="back" /> Chapters</button>
         <ol className="dots" aria-label="Lesson progress">
           {BEATS.map((b, i) => <li key={b} className={i === beat ? 'on' : i < beat ? 'past' : ''} aria-current={i === beat ? 'step' : undefined}>{b}</li>)}
         </ol>
@@ -80,7 +81,7 @@ export function LessonScreen({ id }: { id: string }) {
         <div className="scene">
           <p className="muted">In real systems, each part of the story has a name.</p>
           <ul className="pairs">
-            {lesson.analogy.pairs.map(([a, b]) => <li key={a}><span>{a}</span><span aria-hidden>→</span><strong>{b}</strong></li>)}
+            {lesson.analogy.pairs.map(([a, b]) => <li key={a}><span>{a}</span><Icon name="next" /><strong>{b}</strong></li>)}
           </ul>
         </div>
       )}
@@ -105,7 +106,7 @@ export function LessonScreen({ id }: { id: string }) {
             )}
             <div className="row mono small" role="status">
               <span>{m ? Math.round(m.rps) : 0} req/s</span><span>p95 {m ? Math.round(m.p95) : 0} ms</span>
-              <span className={m && m.errorRate > 0.01 ? 'badtext' : ''}>{m && m.errorRate > 0.01 ? '✕ ' : '✓ '}errors {m ? (m.errorRate * 100).toFixed(1) : 0}%</span>
+              <span className={m && m.errorRate > 0.01 ? 'badtext' : ''}><Icon name={m && m.errorRate > 0.01 ? 'cross' : 'check'} size={14} /> errors {m ? (m.errorRate * 100).toFixed(1) : 0}%</span>
             </div>
           </div>
         </div>

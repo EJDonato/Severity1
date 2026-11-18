@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CHECK, LESSONS, LEVELS, levelById } from '../content'
 import { useGame } from '../session/store'
+import { Icon, Wordmark } from './Icon'
 
 export function Menu() {
   const g = useGame()
@@ -9,7 +10,7 @@ export function Menu() {
   return (
     <div className="menu">
       <section className="panel hero">
-        <h1>Severity 1</h1>
+        <h1><Wordmark size={56} /></h1>
         <p className="big">Build Friendbook from a dorm-room site to a global network. Learn a concept, build with it, then watch real traffic stress it.</p>
         <p className="muted small">Progress is not saved. Each visit starts fresh.</p>
         {g.check.before === undefined && <button className="btn" onClick={() => g.go({ name: 'check', phase: 'before' })}>Take the 1-minute "explain this architecture" check</button>}
@@ -25,16 +26,15 @@ export function Menu() {
           return (
             <article key={l.id} className={`panel chapter${unlocked ? '' : ' locked'}`}>
               <div>
-                <span className="muted small">Chapter {l.chapter}</span>
-                <h3>{l.title}</h3>
+                <h3>{l.chapter === 0 ? l.title : `${l.chapter}. ${l.title}`}</h3>
                 <p className="muted small">{l.story}</p>
                 <p className="small">Lessons: {l.lessons.map((x) => LESSONS.find((y) => y.id === x)!.title).join(' · ')}</p>
               </div>
               <div className="col">
                 <span className="stars" aria-label={s ? 'Stars earned' : 'No stars yet'}>
-                  <span className={s?.ship ? 'on' : ''}>★</span><span className={s?.thrifty ? 'on' : ''}>★</span><span className={s?.senior ? 'on' : ''}>★</span>
+                  <span className={s?.ship ? 'on' : ''}><Icon name="star" filled={s?.ship} size={22} /></span><span className={s?.thrifty ? 'on' : ''}><Icon name="star" filled={s?.thrifty} size={22} /></span><span className={s?.senior ? 'on' : ''}><Icon name="star" filled={s?.senior} size={22} /></span>
                 </span>
-                {!unlocked && <span className="muted small">🔒 Finish the previous chapter</span>}
+                {!unlocked && <span className="muted small"><Icon name="lock" size={16} /> Finish the previous chapter</span>}
                 {unlocked && !lessonsDone && <button className="btn primary" onClick={() => g.go({ name: 'lesson', id: nextLesson! })}>Start lesson</button>}
                 {unlocked && lessonsDone && <button className="btn primary" onClick={() => g.enterLevel(l.id)}>{s ? 'Replay level' : 'Play level'}</button>}
                 {unlocked && lessonsDone && <button className="btn quiet small" onClick={() => g.go({ name: 'lesson', id: l.lessons[0] })}>Replay lesson</button>}
@@ -101,7 +101,7 @@ export function Debrief({ id }: { id: string }) {
   return (
     <div className="panel debrief">
       <h2>Debrief: {level.title}</h2>
-      <div className="stars big" aria-label="Stars earned"><span className={s?.ship ? 'on' : ''}>★ Ship it</span><span className={s?.thrifty ? 'on' : ''}>★ Thrifty</span><span className={s?.senior ? 'on' : ''}>★ Senior engineer</span></div>
+      <div className="stars big" aria-label="Stars earned"><span className={s?.ship ? 'on' : ''}><Icon name="star" filled={s?.ship} size={22} /> Ship it</span><span className={s?.thrifty ? 'on' : ''}><Icon name="star" filled={s?.thrifty} size={22} /> Thrifty</span><span className={s?.senior ? 'on' : ''}><Icon name="star" filled={s?.senior} size={22} /> Senior engineer</span></div>
       {s?.fromReference && <p className="muted small">Earned from a reference start.</p>}
       <h3>Timeline</h3>
       {g.timeline.length === 0 ? <p className="muted small">No incidents fired this run.</p> : (
@@ -117,7 +117,7 @@ export function Debrief({ id }: { id: string }) {
             return (
               <tr key={nid} className={diff ? 'diff' : ''}>
                 <td>{nid}</td><td>{a ? `×${a.instances}` : '—'}</td><td>{b ? `×${b.instances}` : '—'}</td>
-                <td className="small">{diff ? '≠ ' : ''}{level.debrief.diffs[nid] ?? ''}</td>
+                <td className="small">{diff ? <strong>Differs. </strong> : null}{level.debrief.diffs[nid] ?? ''}</td>
               </tr>
             )
           })}
