@@ -18,7 +18,10 @@ export default function App() {
       <a className="skip" href="#main">Skip to content</a>
       <header className="topbar">
         <button className="brand" onClick={() => g.go({ name: 'menu' })} aria-label="Severity 1, home"><Wordmark /></button>
-        <label className="small"><input type="checkbox" checked={g.settings.reducedMotion} onChange={(e) => g.setReduced(e.target.checked)} /> Reduced motion</label>
+        <span className="toggles">
+          <label className="small"><input type="checkbox" checked={g.settings.sound} onChange={(e) => g.setSound(e.target.checked)} /> Sound</label>
+          <label className="small"><input type="checkbox" checked={g.settings.reducedMotion} onChange={(e) => g.setReduced(e.target.checked)} /> Reduced motion</label>
+        </span>
       </header>
       {!g.consentAsked && (
         <div className="consent panel" role="region" aria-label="Privacy notice">

@@ -13,6 +13,9 @@ const P: Record<string, string> = {
   flame: 'M10 2c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .5 1.5 1.5 1.5 1.5 0 0-2 .5-4 1.5-6z',
   star: 'M10 2.5l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L2.8 7.8l5-.7z',
   close: 'M5 5l10 10M15 5L5 15',
+  bolt: 'M11 2L4 11h5l-1 7 8-10h-5z',
+  sound: 'M3 8v4h3l4 3V5L6 8zM13 7.5a3.5 3.5 0 0 1 0 5',
+  mute: 'M3 8v4h3l4 3V5L6 8zM13 8l4 4M17 8l-4 4',
 }
 export type IconName = keyof typeof P
 

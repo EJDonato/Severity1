@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Board } from '../board/Board'
-import { lessonById, levelById } from '../content'
+import { LEVELS, lessonById } from '../content'
 import { Sim, applyTo } from '../engine/sim'
 import { telemetry } from '../telemetry'
 import type { Design, Lesson, Level, Snapshot } from '../schema'
@@ -22,7 +22,7 @@ function useToy(lesson: Lesson, designIdx: number, instances: number | null, loa
   useEffect(() => {
     const base = { ...lesson.toy.base }
     for (const k of Object.keys(base) as (keyof typeof base)[]) base[k] *= load
-    const level = { traffic: { base, peak: 1, cycle: CYCLE, flat: true }, cycles: 1, slo: { p95Ms: 300, errorRate: 0.01 } } as unknown as Level
+    const level = { traffic: { base, peak: 1, cycle: CYCLE, flat: true, fanout: lesson.toy.fanout ?? 0 }, cycles: 1, slo: { p95Ms: 300, errorRate: 0.01 }, regions: lesson.toy.regions } as unknown as Level
     const sim = new Sim(level, design, 1)
     let s = sim.step()
     for (let i = 0; i < 8; i++) s = sim.step() // settle so the first frame already shows steady state
@@ -43,7 +43,7 @@ export function LessonScreen({ id }: { id: string }) {
   const [load, setLoad] = useState(steps ? steps[0] : 1)
   const [picked, setPicked] = useState<number | null>(null)
   const { snap, design } = useToy(lesson, designIdx, instances, load, g.settings.speed)
-  const level = Object.values({ a: levelById('ch0'), b: levelById('ch1'), c: levelById('ch2') }).find((l) => l.lessons.includes(id))
+  const level = LEVELS.find((l) => l.lessons.includes(id))
   const m = snap?.metrics
 
   useEffect(() => { telemetry.track('lesson_started', { lesson: id }) }, [id])

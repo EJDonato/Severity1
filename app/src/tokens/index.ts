@@ -1,3 +1,4 @@
+import type { CType } from '../schema'
 // One source for design tokens. Hex values live only here. World: quiet white, one blue, soft depth.
 // Contrast is asserted in tokens.test.ts, so any change that breaks 4.5:1 text or 3:1 graphics fails CI.
 export const color = {
@@ -16,6 +17,10 @@ export const color = {
 
 export const motion = { fast: '150ms', base: '250ms', slow: '450ms', standard: 'cubic-bezier(0.25, 0.1, 0.25, 1)', alert: 'cubic-bezier(0.2, 0.9, 0.3, 1.1)' }
 export const CELL = 48
+export const SIZE: Record<CType, [number, number]> = {
+  users: [2, 2], dns: [2, 2], cdn: [2, 2], limiter: [2, 2], lb: [3, 2], app: [2, 2], cache: [2, 2], queue: [2, 2],
+  worker: [2, 2], db: [2, 2], shard: [2, 2], search: [2, 2], storage: [2, 2], monitor: [2, 2],
+}
 
 const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
 

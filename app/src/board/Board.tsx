@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { CELL, color } from '../tokens'
+import { CELL, SIZE, color } from '../tokens'
 import { PARAMS, REQ_TYPES } from '../schema'
 import type { CType, DNode, Design, Health, Mood, Snapshot } from '../schema'
 
-const SIZE: Record<CType, [number, number]> = { users: [2, 2], app: [2, 2], db: [2, 2], storage: [2, 2], lb: [3, 2] }
 const HEALTH_COLOR: Record<Health, string> = { healthy: color.ok, strained: color.warn, overloaded: color.danger, failing: color.critical, down: color.borderStrong }
 const HEALTH_LABEL: Record<Health, string> = { healthy: 'healthy', strained: 'strained', overloaded: 'overloaded', failing: 'failing', down: 'down' }
-const REQ_COLOR = { read: color.read, write: color.write, photo: color.photo, upload: color.upload }
+const REQ_COLOR = { read: color.read, write: color.write, photo: color.photo, upload: color.upload, search: color.search, bot: color.bot }
 const px = (n: DNode) => ({ x: n.x * CELL, y: n.y * CELL, w: SIZE[n.type][0] * CELL, h: SIZE[n.type][1] * CELL })
 
 interface Props {
@@ -28,11 +27,11 @@ function Badge({ health, x, y }: { health: Health; x: number; y: number }) {
   return (
     <g transform={`translate(${x},${y})`} aria-hidden>
       <circle r={12} fill={color.bg1} stroke={color.borderSubtle} strokeWidth={1.5} />
-      {health === 'healthy' && <><circle r={8} fill={c} /><path d="M-4 0l3 3 5-6" stroke={color.ink} strokeWidth={2.2} fill="none" /></>}
-      {health === 'strained' && <><path d="M0-8L8 7H-8Z" fill={c} /><path d="M0-3v5M0 4v1" stroke={color.ink} strokeWidth={2} /></>}
-      {health === 'overloaded' && <><path d="M-3-8h6l5 5v6l-5 5h-6l-5-5v-6z" fill={c} /><path d="M0-4v5M0 4v1" stroke={color.ink} strokeWidth={2} /></>}
-      {health === 'failing' && <path d="M0-9C3-4 7-2 7 3a7 7 0 0 1-14 0c0-3 2-4 3-6 1 2 2 2 2 0 0-2 1-4 2-6z" fill={c} />}
-      {health === 'down' && <><rect x={-7} y={-7} width={14} height={14} fill={c} /><path d="M-4-4l8 8M4-4l-8 8" stroke={color.ink} strokeWidth={2} /></>}
+      {health === 'healthy' && <><circle r={8} fill={c} stroke={color.ink} strokeWidth={1.5} /><path d="M-4 0l3 3 5-6" stroke={color.ink} strokeWidth={2.2} fill="none" /></>}
+      {health === 'strained' && <><path d="M0-8L8 7H-8Z" fill={c} stroke={color.ink} strokeWidth={1.5} strokeLinejoin="round" /><path d="M0-3v5M0 4v1" stroke={color.ink} strokeWidth={2} /></>}
+      {health === 'overloaded' && <><path d="M-3-8h6l5 5v6l-5 5h-6l-5-5v-6z" fill={c} stroke={color.ink} strokeWidth={1.5} /><path d="M0-4v5M0 4v1" stroke={color.ink} strokeWidth={2} /></>}
+      {health === 'failing' && <path d="M0-9C3-4 7-2 7 3a7 7 0 0 1-14 0c0-3 2-4 3-6 1 2 2 2 2 0 0-2 1-4 2-6z" fill={c} stroke={color.ink} strokeWidth={1.5} />}
+      {health === 'down' && <><rect x={-7} y={-7} width={14} height={14} fill={color.bg0} stroke={color.ink} strokeWidth={1.5} /><path d="M-4-4l8 8M4-4l-8 8" stroke={color.ink} strokeWidth={2} /></>}
     </g>
   )
 }
@@ -64,8 +63,29 @@ function Art({ type, w, h, util, mood }: { type: CType; w: number; h: number; ut
       <path d={`M${w / 2 - 30} 45c0 5 13 9 30 9s30-4 30-9`} fill="none" stroke={line} strokeWidth={2} /></>
   if (type === 'storage')
     return <>{[[16, 40], [48, 40], [32, 14]].map(([x, y], i) => <g key={i}><rect x={x} y={y + 8} width={28} height={26} rx={3} fill={soft} stroke={line} strokeWidth={1.75} /><path d={`M${x} ${y + 18}h28`} stroke={line} strokeWidth={2} /></g>)}</>
-  return <>{[0, 1, 2].map((i) => <path key={i} d={`M16 ${28 + i * 20}H${w * 0.45}L${w - 16} ${20 + i * 28}`} stroke={line} strokeWidth={3} fill="none" strokeLinecap="round" />)}
-    <circle cx={w * 0.45} cy={h / 2} r={8} fill={soft} stroke={line} strokeWidth={1.75} /></>
+  if (type === 'lb')
+    return <>{[0, 1, 2].map((i) => <path key={i} d={`M16 ${28 + i * 20}H${w * 0.45}L${w - 16} ${20 + i * 28}`} stroke={line} strokeWidth={3} fill="none" strokeLinecap="round" />)}
+      <circle cx={w * 0.45} cy={h / 2} r={8} fill={soft} stroke={line} strokeWidth={1.75} /></>
+  if (type === 'dns')
+    return <><path d={`M${w / 2} 12v54`} stroke={line} strokeWidth={2.5} strokeLinecap="round" />{[[18, 1], [34, -1], [50, 1]].map(([y, d], i) => (
+      <path key={i} d={d > 0 ? `M${w / 2} ${y}h22l8 6-8 6h-22z` : `M${w / 2} ${y}h-22l-8 6 8 6h22z`} fill={color.bg0} stroke={line} strokeWidth={1.75} strokeLinejoin="round" />
+    ))}</>
+  if (type === 'cdn')
+    return <><circle cx={w / 2} cy={44} r={24} fill={soft} stroke={line} strokeWidth={1.75} /><ellipse cx={w / 2} cy={44} rx={10} ry={24} fill="none" stroke={line} strokeWidth={1.5} /><path d={`M${w / 2 - 24} 44h48M${w / 2 - 20} 32h40M${w / 2 - 20} 56h40`} stroke={line} strokeWidth={1.5} />
+      {[[14, 22], [w - 14, 22], [w / 2, 12]].map(([x, y], i) => <path key={i} d={`M${x} ${y + 8}v-8m-4 0h8`} stroke={color.accent} strokeWidth={2.5} strokeLinecap="round" />)}</>
+  if (type === 'limiter')
+    return <><path d={`M22 66V26M${w - 22} 66V26`} stroke={line} strokeWidth={3} strokeLinecap="round" /><path d={`M22 36L${w - 22} 28`} stroke={color.danger} strokeWidth={5} strokeLinecap="round" /><path d={`M22 36L${w - 22} 28`} stroke={line} strokeWidth={1.75} strokeDasharray="6 8" /><circle cx={22} cy={66} r={4} fill={soft} stroke={line} strokeWidth={1.75} /><circle cx={w - 22} cy={66} r={4} fill={soft} stroke={line} strokeWidth={1.75} /></>
+  if (type === 'cache')
+    return <>{[0, 1, 2].map((i) => <g key={i}><rect x={14 + i * 24} y={20} width={20} height={30} rx={4} fill={soft} stroke={line} strokeWidth={1.75} /><path d={`M${19 + i * 24} 56v8m5-8v8m5-8v8`} stroke={line} strokeWidth={1.75} strokeLinecap="round" /><circle className="blink" cx={24 + i * 24} cy={35} r={3} fill={color.accent} style={{ animationDelay: `${i * 0.25}s` }} /></g>)}</>
+  if (type === 'queue')
+    return <><rect x={10} y={46} width={w - 20} height={12} rx={6} fill={soft} stroke={line} strokeWidth={1.75} />{[0, 1, 2].map((i) => <rect key={i} x={16 + i * 22} y={26} width={18} height={18} rx={3} fill={color.bg1} stroke={line} strokeWidth={1.75} />)}<circle cx={22} cy={52} r={2.5} fill={line} /><circle cx={w / 2} cy={52} r={2.5} fill={line} /><circle cx={w - 22} cy={52} r={2.5} fill={line} /></>
+  if (type === 'worker')
+    return <>{[26, 70].map((x, i) => <g key={i}><rect x={x - 12} y={26} width={24} height={18} rx={5} fill={soft} stroke={line} strokeWidth={1.75} /><circle cx={x - 5} cy={35} r={2.2} fill={line} /><circle cx={x + 5} cy={35} r={2.2} fill={line} /><path d={`M${x} 26v-8`} stroke={line} strokeWidth={1.75} /><circle cx={x} cy={16} r={2.5} fill={color.accent} /><rect x={x - 10} y={48} width={20} height={16} rx={4} fill={soft} stroke={line} strokeWidth={1.75} /></g>)}</>
+  if (type === 'search')
+    return <><circle cx={44} cy={36} r={18} fill={color.bg1} stroke={line} strokeWidth={2.5} /><path d="M57 49l16 16" stroke={line} strokeWidth={4} strokeLinecap="round" /><path d="M34 32h20M34 40h14" stroke={line} strokeWidth={2} strokeLinecap="round" /></>
+  if (type === 'shard')
+    return <>{[0, 1, 2].map((i) => <g key={i}><ellipse cx={22 + i * 26} cy={26} rx={11} ry={5} fill={soft} stroke={line} strokeWidth={1.75} /><path d={`M${11 + i * 26} 26v28c0 3 5 5 11 5s11-2 11-5V26`} fill={soft} stroke={line} strokeWidth={1.75} /></g>)}</>
+  return <>{[[14, 18], [w / 2 + 2, 18], [14, 46], [w / 2 + 2, 46]].map(([x, y], i) => <g key={i}><rect x={x} y={y} width={w / 2 - 16} height={22} rx={4} fill={soft} stroke={line} strokeWidth={1.75} /><path d={`M${x + 5} ${y + 16}l7-6 5 3 6-8`} fill="none" stroke={i === 2 ? color.danger : color.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></g>)}</>
 }
 
 function edgePath(a: DNode, b: DNode) {
@@ -211,9 +231,11 @@ function Particles({ design, snap, bounds, scaleN, speed }: { design: Design; sn
           if (p.type === 'read') ctx.arc(x, y, 4, 0, 6.3)
           else if (p.type === 'write') ctx.rect(x - 4, y - 4, 8, 8)
           else if (p.type === 'photo') { ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 6); ctx.lineTo(x - 6, y) }
+          else if (p.type === 'search') { for (let k = 0; k < 6; k++) { const ang = (k * Math.PI) / 3; ctx.lineTo(x + 6 * Math.cos(ang), y + 6 * Math.sin(ang)) } }
+          else if (p.type === 'bot') ctx.rect(x - 4, y - 4, 8, 8)
           else { ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y + 5); ctx.lineTo(x - 6, y + 5) }
           ctx.fill()
-          if (p.failed) { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke() }
+          if (p.failed || p.type === 'bot') { ctx.strokeStyle = p.failed ? color.critical : color.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke() }
         }
         ctx.globalAlpha = 1
       }

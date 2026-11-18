@@ -1,13 +1,18 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Board } from '../board/Board'
 import { LESSONS, levelById } from '../content'
-import { PARAMS } from '../schema'
-import type { CType, Design } from '../schema'
+import { ALL_TYPES, PARAMS, costOf } from '../schema'
+import type { CType, ChaosKind, DNode, Design, NodeConfig } from '../schema'
 import { SPEEDS, useGame } from '../session/store'
 import { Icon, sevIcon } from './Icon'
+import { Palette } from './Palette'
 
-const ALL: CType[] = ['users', 'app', 'lb', 'db', 'storage']
-const costOf = (d: Design) => d.nodes.reduce((s, n) => s + PARAMS[n.type].cost * (n.type === 'lb' ? 1 : n.instances), 0)
+const total = (d: Design) => d.nodes.reduce((s, n) => s + costOf(n), 0)
+const CAN_CONNECT: CType[] = ['users', 'dns', 'limiter', 'lb', 'app', 'cache', 'cdn', 'queue']
+const CHAOS: { kind: ChaosKind; label: string; target?: CType }[] = [
+  { kind: 'crash', label: 'Crash a server', target: 'app' }, { kind: 'regionOut', label: 'Lose a region' }, { kind: 'cacheFlush', label: 'Flush the cache' },
+  { kind: 'spike', label: 'Traffic spike' }, { kind: 'badDeploy', label: 'Bad deploy' }, { kind: 'botAttack', label: 'Bot attack' },
+]
 
 function Tile({ label, value, bad }: { label: string; value: string; bad?: boolean }) {
   return (
@@ -18,20 +23,78 @@ function Tile({ label, value, bad }: { label: string; value: string; bad?: boole
   )
 }
 
+function Select<T extends string | number>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
+  return (
+    <label className="field">
+      <span className="muted small">{label}</span>
+      <select value={value} onChange={(e) => onChange((typeof value === 'number' ? Number(e.target.value) : e.target.value) as T)}>
+        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function Stepper({ label, value, min, max, onChange, hint }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void; hint?: string }) {
+  return (
+    <span className="stepper" role="group" aria-label={label}>
+      <span className="small">{label}</span>
+      <button className="btn small" aria-label={`Fewer ${label}`} onClick={() => onChange(value - 1)} disabled={value <= min}>−</button>
+      <span className="mono">{value}</span>
+      <button className="btn small" aria-label={`More ${label}`} onClick={() => onChange(value + 1)} disabled={value >= max}>+</button>
+      {hint && <span className="muted small">{hint}</span>}
+    </span>
+  )
+}
+
+function Settings({ node, scalingOn, replicasOn }: { node: DNode; scalingOn: boolean; replicasOn: boolean }) {
+  const g = useGame()
+  const cfg = (c: NodeConfig) => g.setConfig(node.id, c)
+  return (
+    <div className="settings">
+      {(node.type === 'app' || node.type === 'lb') && scalingOn && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS[node.type].cost}/mo each`} />}
+      {node.type === 'db' && replicasOn && <Stepper label="Read replicas" value={node.instances - 1} min={0} max={8} onChange={(v) => g.setInstances(node.id, v + 1)} hint="$120/mo each" />}
+      {node.type === 'worker' && <Stepper label="Workers" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.worker.cost}/mo each`} />}
+      {node.type === 'shard' && <Stepper label="Shards" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.shard.cost}/mo each`} />}
+      {node.type === 'search' && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.search.cost}/mo each`} />}
+      {node.type === 'cache' && (
+        <>
+          <Select label="Cache size" value={node.config?.cacheSize ?? 2} options={[[1, 'Small'], [2, 'Medium'], [3, 'Large']]} onChange={(v) => cfg({ cacheSize: v as 1 | 2 | 3 })} />
+          <Select label="Entries expire after" value={node.config?.expiry ?? 30} options={[[5, '5 seconds'], [15, '15 seconds'], [30, '30 seconds']]} onChange={(v) => cfg({ expiry: v as 5 | 15 | 30 })} />
+        </>
+      )}
+      {node.type === 'shard' && <Select label="Shard key" value={node.config?.shardKey ?? 'userId'} options={[['userId', 'User ID'], ['region', 'Region']]} onChange={(v) => cfg({ shardKey: v })} />}
+      {node.type === 'limiter' && <Select label="Limit per user" value={node.config?.limit ?? 'medium'} options={[['low', 'Strict'], ['medium', 'Medium'], ['high', 'Lenient']]} onChange={(v) => cfg({ limit: v })} />}
+    </div>
+  )
+}
+
 export function LevelScreen({ id }: { id: string }) {
   const g = useGame()
   const level = levelById(id)
   const design = g.designs[id]
   const snap = g.snap
-  const metricsOn = g.lessonsDone.includes('latency')
-  const scalingOn = g.lessonsDone.includes('load-balancing')
-  const ghosts = useMemo(() => level.reference.nodes.filter((n) => !design.nodes.some((x) => x.id === n.id) && level.placeable.includes(n.type)), [design, level])
+  const sandbox = !!level.sandbox || !!level.interview // both open every component and skip the lessons
+  const interview = !!level.interview
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!interview) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [interview])
+  const left = g.deadline ? Math.max(0, Math.round((g.deadline - now) / 1000)) : null
+  const metricsOn = sandbox || g.lessonsDone.includes('latency')
+  const scalingOn = sandbox || g.lessonsDone.includes('load-balancing')
+  const replicasOn = sandbox || g.lessonsDone.includes('replication')
+  const ghosts = useMemo(() => (sandbox ? [] : level.reference.nodes.filter((n) => !design.nodes.some((x) => x.id === n.id) && level.placeable.includes(n.type))), [design, level, sandbox])
   const sel = design.nodes.find((n) => n.id === g.selected)
   const m = snap?.metrics
   const idle = !g.running && !snap
-  const unlockLesson = (t: CType) => LESSONS.find((l) => (l.unlocks as string[]).includes(t))?.title ?? ''
+  const lessonFor = (t: CType) => LESSONS.filter((l) => (l.unlocks as string[]).includes(t))
+  const unlocked = (t: CType) => level.placeable.includes(t) && (sandbox || lessonFor(t).every((l) => g.lessonsDone.includes(l.id)))
   const hint = g.hintShown > 0 ? level.hints.slice(0, g.hintShown) : []
   const result = g.result
+  const chaosNow = g.chaos && snap && snap.tick - g.chaos.tick < 8 ? g.chaos : null
+  const first = level.lessons[0]
 
   return (
     <div className="level">
@@ -44,56 +107,69 @@ export function LevelScreen({ id }: { id: string }) {
       </header>
 
       <div className="level-grid">
-        <aside className="panel toolbox" aria-label="Toolbox">
-          <h3>Components</h3>
-          {ALL.map((t) => {
-            const ok = level.placeable.includes(t) && LESSONS.filter((l) => (l.unlocks as string[]).includes(t)).every((l) => g.lessonsDone.includes(l.id))
-            return (
-              <button key={t} className="toolitem" disabled={!ok} onClick={() => g.place(t)} aria-label={ok ? `Add ${PARAMS[t].label}` : `${PARAMS[t].label}, locked. Unlocks in: ${unlockLesson(t)}`}>
-                <span className="toolname"><Icon name={ok ? 'plus' : 'lock'} /> {PARAMS[t].label}</span>
-                <span className="muted small">{ok ? (PARAMS[t].cost ? `$${PARAMS[t].cost}/mo` : 'free') : `unlocks in: ${unlockLesson(t) || 'a later chapter'}`}</span>
-              </button>
-            )
-          })}
-        </aside>
-
         <section className="stage" aria-label="Board">
+          <div className="toolbar" role="toolbar" aria-label="Components">
+            {ALL_TYPES.map((t) => {
+              if (!level.placeable.includes(t)) return null
+              const ok = unlocked(t)
+              const why = lessonFor(t).map((l) => l.title).join(', ')
+              return (
+                <button key={t} className="chip" disabled={!ok} onClick={() => g.place(t)} title={ok ? `${PARAMS[t].label}, $${PARAMS[t].cost}/month` : `Unlocks in: ${why}`}
+                  aria-label={ok ? `Add ${PARAMS[t].label}` : `${PARAMS[t].label}, locked. Unlocks in: ${why}`}>
+                  <Icon name={ok ? 'plus' : 'lock'} size={14} /> {PARAMS[t].label}
+                </button>
+              )
+            })}
+            {!sandbox && (
+              <span className="chip-note muted small">Locked parts unlock through their lesson.</span>
+            )}
+          </div>
+
+          {left !== null && <div className={`chaos-banner${left === 0 ? ' over' : ''}`} role="timer" aria-label="Time left"><Icon name="bolt" /> <strong className="mono">{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</strong> <span>{left === 0 ? 'Time is up. Run your design now.' : 'left to design. Press Start whenever you are ready.'}</span></div>}
+          {chaosNow && <div className="chaos-banner" role="status"><Icon name="bolt" /> <strong>{chaosNow.name}</strong> <span>Watch what it takes down, and what survives.</span></div>}
+
           <Board design={design} snap={snap} ghosts={ghosts} selected={g.selected} linkFrom={g.linkFrom} focus={g.focusNode}
             reduced={g.settings.reducedMotion} speed={g.settings.speed} onNode={g.clickNode} onGhost={g.place} />
           <div className="live" role="status" aria-live="polite">{g.message}</div>
+
           {sel && (
             <div className="panel inspect">
-              <strong>{PARAMS[sel.type].label}</strong>
-              {snap?.nodes[sel.id] && sel.type !== 'users' && (
-                <span className="mono small"> · {Math.round(snap.nodes[sel.id].util * 100)}% used · {Math.round(snap.nodes[sel.id].latencyMs)} ms · {snap.nodes[sel.id].health}</span>
-              )}
+              <div className="row between">
+                <div>
+                  <strong>{PARAMS[sel.type].label}</strong>
+                  {snap?.nodes[sel.id] && sel.type !== 'users' && (
+                    <span className="small muted"> · {Math.round(snap.nodes[sel.id].util * 100)}% used · {Math.round(snap.nodes[sel.id].latencyMs)} ms · {snap.nodes[sel.id].health}</span>
+                  )}
+                </div>
+                <span className="small muted">{design.edges.filter((e) => e.from === sel.id).map((e) => `→ ${e.to}`).join('  ') || 'no outgoing connections'}</span>
+              </div>
+              <Settings node={sel} scalingOn={scalingOn} replicasOn={replicasOn} />
               <div className="row">
-                {sel.type === 'app' && scalingOn && (
-                  <span className="stepper" role="group" aria-label="Instances">
-                    <button className="btn" aria-label="Remove an instance" onClick={() => g.setInstances(sel.id, sel.instances - 1)} disabled={sel.instances <= 1}>−</button>
-                    <span className="mono">{sel.instances}</span>
-                    <button className="btn" aria-label="Add an instance" onClick={() => g.setInstances(sel.id, sel.instances + 1)} disabled={sel.instances >= 8}>+</button>
-                    <span className="muted small">+${PARAMS.app.cost}/mo each</span>
-                  </span>
-                )}
-                {sel.type !== 'db' && sel.type !== 'storage' && (
+                {CAN_CONNECT.includes(sel.type) && (
                   <button className={`btn${g.linkFrom === sel.id ? ' primary' : ''}`} onClick={() => g.startLink(sel.id)}>{g.linkFrom === sel.id ? 'Pick target…' : 'Connect to…'}</button>
                 )}
-                {design.edges.filter((e) => e.from === sel.id).map((e) => (
-                  <span key={e.to} className="muted small">→ {e.to}</span>
-                ))}
                 <button className="btn danger" onClick={() => g.remove(sel.id)}>Remove</button>
               </div>
             </div>
           )}
-          {!sel && <p className="muted small">Click a component to inspect, scale or connect it. Dashed outlines show where the next piece goes.</p>}
+          {!sel && <p className="muted small">Click a component to inspect, scale, configure or connect it. Dashed outlines show where the next piece goes. Press <kbd>/</kbd> for the command palette.</p>}
+
+          {level.sandbox && (
+            <div className="panel sandbox">
+              <h3>Sandbox controls</h3>
+              <label className="field"><span className="small">Traffic</span>
+                <input type="range" min={0.25} max={4} step={0.25} defaultValue={1} onChange={(e) => g.setSandboxLoad(Number(e.target.value))} aria-label="Traffic multiplier" /></label>
+              <div className="row">{CHAOS.map((c) => <button key={c.kind} className="btn small" onClick={() => g.fireChaos(c.kind, c.target)}><Icon name="bolt" size={14} /> {c.label}</button>)}</div>
+              <p className="muted small">Press Start, then break things. The sandbox is never scored.</p>
+            </div>
+          )}
         </section>
 
         <aside className="side">
           <div className="panel">
             <div className="row between">
               <h3>Run</h3>
-              <span className="mono small">{snap ? `tick ${snap.tick}/${level.traffic.cycle * level.cycles}` : `cost $${costOf(design)}/mo`}</span>
+              <span className="mono small">{snap ? (sandbox ? `tick ${snap.tick}` : `tick ${snap.tick}/${level.traffic.cycle * level.cycles}`) : `cost $${total(design)}/mo`}</span>
             </div>
             <div className="row">
               {idle || result || snap?.done ? (
@@ -106,9 +182,9 @@ export function LevelScreen({ id }: { id: string }) {
               )}
             </div>
             <div className="row" role="group" aria-label="Speed">
-              {SPEEDS.map((s) => <button key={s} className={`btn small${g.settings.speed === s ? ' primary' : ''}`} aria-pressed={g.settings.speed === s} onClick={() => g.setSpeed(s)}>{s}×</button>)}
+              {SPEEDS.map((s) => <button key={s} className="btn small" aria-pressed={g.settings.speed === s} onClick={() => g.setSpeed(s)}>{s}×</button>)}
             </div>
-            <button className="btn quiet small" onClick={g.restartFromReference}>Restart chapter from reference design</button>
+            {!sandbox && <button className="btn quiet small" onClick={g.restartFromReference}>Restart chapter from reference design</button>}
           </div>
 
           {metricsOn && (
@@ -119,10 +195,10 @@ export function LevelScreen({ id }: { id: string }) {
                 <Tile label="p50" value={m ? `${Math.round(m.p50)} ms` : '–'} />
                 <Tile label="p95" value={m ? `${Math.round(m.p95)} ms` : '–'} bad={!!m && m.p95 > level.slo.p95Ms} />
                 <Tile label="Errors" value={m ? `${(m.errorRate * 100).toFixed(1)}%` : '–'} bad={!!m && m.errorRate > level.slo.errorRate} />
-                <Tile label="Cost/mo" value={`$${m ? m.cost : costOf(design)}`} bad={(m ? m.cost : costOf(design)) > level.budget} />
-                <Tile label="Available" value={m ? `${(m.availability * 100).toFixed(1)}%` : '–'} />
+                <Tile label="Cost/mo" value={`$${m ? m.cost : total(design)}`} bad={!sandbox && (m ? m.cost : total(design)) > level.budget} />
+                {m && m.botRps > 0 ? <Tile label="Bot traffic/s" value={m.botRps.toFixed(0)} /> : <Tile label="Available" value={m ? `${(m.availability * 100).toFixed(1)}%` : '–'} />}
               </div>
-              <p className="muted small">Goal: p95 under {level.slo.p95Ms} ms, errors under {(level.slo.errorRate * 100).toFixed(0)}%, budget ${level.budget}/mo.</p>
+              {(!sandbox || interview) && <p className="muted small">Goal: p95 under {level.slo.p95Ms} ms, errors under {(level.slo.errorRate * 100).toFixed(1)}%, budget ${level.budget}/mo.</p>}
             </div>
           )}
 
@@ -131,25 +207,36 @@ export function LevelScreen({ id }: { id: string }) {
             {g.timeline.length === 0 && <p className="muted small">Nothing yet. Press Start.</p>}
             <ul className="incidents" aria-live="polite">
               {g.timeline.slice(-6).map((t, i) => (
-                <li key={i} className={t.resolved ? 'ok' : `sev${t.severity}`}>
-                  <Icon name={t.resolved ? 'check' : sevIcon(t.severity)} /> <span className="mono small">t{t.tick}</span> {t.resolved ? `Resolved: ${t.text.replace(/^SEV-\d: /, '')}` : t.text}
+                <li key={i} className={t.chaos ? 'chaos' : t.resolved ? 'ok' : `sev${t.severity}`}>
+                  <Icon name={t.chaos ? 'bolt' : t.resolved ? 'check' : sevIcon(t.severity)} /> <span className="mono small">t{t.tick}</span> {t.resolved ? `Resolved: ${t.text.replace(/^SEV-\d: /, '')}` : t.text}
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="panel">
-            <h3>Hints</h3>
-            {hint.map((h, i) => <p key={i} className="small">{i + 1}. {h}</p>)}
-            {g.hintShown < 3 && (
-              <button className="btn small" onClick={g.useHint}>
-                {['Nudge', 'Concept', 'Specific fix'][g.hintShown]} (costs the Senior engineer star)
-              </button>
-            )}
-            {g.hintShown >= 2 && <button className="btn quiet small" onClick={() => g.go({ name: 'lesson', id: level.lessons[0] })}>Reopen Codex card: {level.lessons[0]}</button>}
-          </div>
+          {!sandbox && (
+            <div className="panel">
+              <h3>Hints</h3>
+              {hint.map((h, i) => <p key={i} className="small">{i + 1}. {h}</p>)}
+              {g.hintShown < 3 && (
+                <button className="btn small" onClick={g.useHint}>
+                  {['Nudge', 'Concept', 'Specific fix'][g.hintShown]} (costs the Senior engineer star)
+                </button>
+              )}
+              {g.hintShown >= 2 && first && <button className="btn quiet small" onClick={() => g.go({ name: 'lesson', id: first })}>Reopen the lesson</button>}
+            </div>
+          )}
         </aside>
       </div>
+
+      <section className="sr-only" aria-label="Design description">
+        <h3>Current design</h3>
+        <ul>
+          {design.nodes.map((n) => <li key={n.id}>{PARAMS[n.type].label} {n.id}, {n.instances} instance{n.instances > 1 ? 's' : ''}{snap?.nodes[n.id] ? `, ${snap.nodes[n.id].health}, ${Math.round(snap.nodes[n.id].util * 100)} percent used` : ''}.</li>)}
+          {design.edges.map((e) => <li key={`${e.from}>${e.to}`}>{e.from} sends requests to {e.to}.</li>)}
+        </ul>
+      </section>
+      <Palette />
 
       {g.pager && (
         <div className={`pager sev${g.pager.severity}`} role="alert">
@@ -163,10 +250,11 @@ export function LevelScreen({ id }: { id: string }) {
         </div>
       )}
 
-      {result && (
+      {result && (!level.sandbox) && (
         <div className="modal-back">
           <div className="modal panel" role="dialog" aria-modal="true" aria-label="Run result">
-            <h2>{result.stars.ship ? 'Shipped!' : 'Not there yet'}</h2>
+            <h2>{interview ? `Interview score: ${Math.round(((result.rubric ?? []).filter((r) => r.pass).length / Math.max(1, (result.rubric ?? []).length)) * 100)}/100` : result.stars.ship ? 'Shipped!' : 'Not there yet'}</h2>
+            {result.rubric && <ul className="slos">{result.rubric.map((r) => <li key={r.label} className={r.pass ? 'ok' : 'bad'}><Icon name={r.pass ? 'check' : 'cross'} /> {r.label}</li>)}</ul>}
             <ul className="slos">
               {result.slos.map((s) => <li key={s.name} className={s.pass ? 'ok' : 'bad'}><Icon name={s.pass ? 'check' : 'cross'} /> {s.name}: {s.measured} <span className="muted">({s.target})</span></li>)}
               {result.missing.length > 0 && <li className="bad"><Icon name="cross" /> Design is missing: {result.missing.map((t) => PARAMS[t].label).join(', ')}</li>}
