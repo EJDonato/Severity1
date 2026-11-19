@@ -112,6 +112,32 @@ test('scaling means more App Servers on the board, and sharing them needs a Load
   await expect(page.getByText(/Add a Load Balancer to share traffic between several/)).toBeVisible()
 })
 
+test('the part you are dragging stays visible over the board, and the board shows where it will land', async ({ page }) => {
+  await open(page)
+  await openSandbox(page)
+  const card = (await page.getByRole('button', { name: 'Add Cache' }).boundingBox())!
+  const board = (await page.locator('.board svg').boundingBox())!
+  const target = { x: board.x + board.width * 0.45, y: board.y + board.height * 0.85 }
+  await page.mouse.move(centre(card).x, centre(card).y)
+  await page.mouse.down()
+  await page.mouse.move(target.x, target.y, { steps: 12 })
+  const ghost = page.locator('.drag-ghost')
+  await expect(ghost).toBeVisible()
+  await expect(ghost).toContainText('Drop to place Cache')
+  await expect(page.locator('.arena-board.dropping')).toHaveCount(1)
+  // nothing on the page paints over it: the preview is the topmost thing at its own centre
+  const onTop = await page.evaluate(() => {
+    const g = document.querySelector('.drag-ghost')!
+    const r = g.getBoundingClientRect()
+    g.setAttribute('style', g.getAttribute('style') + ';pointer-events:auto')
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+    return !!hit && g.contains(hit)
+  })
+  expect(onTop).toBe(true)
+  await page.mouse.up()
+  await expect(node(page, 'Cache')).toBeVisible()
+})
+
 test('a second Load Balancer can be placed (redundancy needs two)', async ({ page }) => {
   await open(page)
   await openSandbox(page)

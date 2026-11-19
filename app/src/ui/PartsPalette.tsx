@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { MachineIcon } from '../board/Board'
 import { PART_INFO, unlockStage } from '../content'
@@ -8,10 +9,11 @@ import { Icon } from './Icon'
 
 // The parts, in the order the game needs them. Unlocked ones drag onto the board (or add on click);
 // locked ones show which stage opens them; parts that just unlocked wear a "New" badge for that stage.
-export function PartsPalette({ types, unlocked, fresh = [], onAdd, onDrop }: {
+export function PartsPalette({ types, unlocked, fresh = [], onAdd, onDrop, onHover }: {
   types: CType[]; unlocked: CType[]; fresh?: CType[]; onAdd: (t: CType) => void; onDrop: (t: CType, clientX: number, clientY: number) => void
+  onHover?: (clientX: number, clientY: number) => boolean
 }) {
-  const [drag, setDrag] = useState<{ type: CType; x: number; y: number } | null>(null)
+  const [drag, setDrag] = useState<{ type: CType; x: number; y: number; over: boolean } | null>(null)
 
   const start = (e: ReactPointerEvent, type: CType) => {
     if (e.button !== 0) return
@@ -21,7 +23,7 @@ export function PartsPalette({ types, unlocked, fresh = [], onAdd, onDrop }: {
     const move = (ev: PointerEvent) => {
       if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return
       moved = true
-      setDrag({ type, x: ev.clientX, y: ev.clientY })
+      setDrag({ type, x: ev.clientX, y: ev.clientY, over: onHover?.(ev.clientX, ev.clientY) ?? false })
     }
     const end = (ev: PointerEvent) => {
       removeEventListener('pointermove', move)
@@ -58,7 +60,13 @@ export function PartsPalette({ types, unlocked, fresh = [], onAdd, onDrop }: {
           )
         })}
       </div>
-      {drag && <div className="drag-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden><MachineIcon type={drag.type} size={56} /></div>}
+      {drag && createPortal(
+        <div className={`drag-ghost${drag.over ? ' over' : ''}`} style={{ left: drag.x, top: drag.y }} aria-hidden>
+          <MachineIcon type={drag.type} size={56} />
+          <span className="drag-label">{drag.over ? `Drop to place ${PARAMS[drag.type].label}` : PARAMS[drag.type].label}</span>
+        </div>,
+        document.body,
+      )}
     </>
   )
 }

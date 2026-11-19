@@ -83,8 +83,10 @@ export function LevelScreen({ id }: { id: string }) {
   const [picking, setPicking] = useState(false)
   useEffect(() => { window.scrollTo(0, 0) }, [id])
   const boardRef = useRef<HTMLDivElement>(null)
+  const [dropping, setDropping] = useState(false)
   // A part dropped from the palette lands centred on the pointer.
   const onDrop = (type: CType, cx: number, cy: number) => {
+    setDropping(false)
     const cell = clientToCell(boardRef.current, cx, cy)
     if (!cell) return
     const [w, h] = SIZE[type]
@@ -151,7 +153,7 @@ export function LevelScreen({ id }: { id: string }) {
 
       <div className="game">
         <aside className="hotbar" aria-label="Parts">
-          <PartsPalette types={UNLOCK_ORDER} unlocked={level.placeable} fresh={STAGE_UNLOCKS[id] ?? []} onAdd={(t) => g.place(t)} onDrop={onDrop} />
+          <PartsPalette types={UNLOCK_ORDER} unlocked={level.placeable} fresh={STAGE_UNLOCKS[id] ?? []} onAdd={(t) => g.place(t)} onDrop={onDrop} onHover={(cx, cy) => { const over = !!clientToCell(boardRef.current, cx, cy); setDropping(over); return over }} />
         </aside>
 
         <section className={`arena${quake ? ' quake' : ''}`} aria-label="Board">
@@ -180,7 +182,7 @@ export function LevelScreen({ id }: { id: string }) {
             </div>
           </div>
 
-          <div className="arena-board" ref={boardRef}>
+          <div className={`arena-board${dropping ? ' dropping' : ''}`} ref={boardRef}>
             {left !== null && <div className={`arena-banner timer${left === 0 ? ' over' : ''}`} role="timer" aria-label="Time left"><Icon name="bolt" size={16} /> <strong className="mono">{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</strong> <span>{left === 0 ? 'Time is up. Run your design now.' : 'left to design'}</span></div>}
             {chaosNow && <div className="arena-banner chaos" role="status" key={g.chaos?.tick}><Icon name="bolt" size={16} /> <strong>{chaosNow.name}</strong> <span>Watch what breaks, and what survives.</span></div>}
             <Board design={design} snap={snap} ghosts={ghosts} selected={g.selected} linkFrom={g.linkFrom} focus={g.focusNode}
