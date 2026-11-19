@@ -26,6 +26,8 @@ What this replaces in the sections below:
 - **The campaign becomes optional Challenges.** The 11 levels (Tutorial, Chapters 1 to 9, the boss) and Interview mode remain, opened from a Challenges list inside the sandbox. They keep their scenarios, SLOs, stars, hints, incidents and debriefs. They are no longer gated by lessons or by each other.
 - **Concept teaching moves into the play itself:** incidents name the cause, hints are tiered, and the debrief explains how large networks solve the same problem.
 
+**No analytics or consent notice for now (FR-23 deferred).** There is no collection endpoint, so a consent banner would ask permission to collect data nobody receives. The analytics code and notice were removed; if analytics is added later, it comes back together with a real endpoint.
+
 The simulation, components, chaos, scoring, replay and accessibility requirements are unchanged. Where the sections below describe lessons, the Codex or locking, this note takes precedence.
 
 ## Goals, non-goals and success metrics

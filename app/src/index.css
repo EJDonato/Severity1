@@ -58,8 +58,6 @@ main { max-width: 1320px; margin: 0 auto; padding: 24px 24px 80px; }
 .btn.primary[aria-pressed='true'] { background: var(--c-ink); }
 input[type='search'] { background: #fff; color: inherit; border: 1px solid var(--c-border-subtle); border-radius: 980px; padding: 6px 14px; font: inherit; }
 
-.consent { margin: 12px max(24px, calc((100vw - 1320px) / 2 + 24px)) 0; display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-.consent-note { text-align: right; padding: 0 24px; }
 
 .hero { text-align: center; padding: 72px 0 56px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .hero h1 { margin-bottom: 18px; }

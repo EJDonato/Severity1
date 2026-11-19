@@ -3,7 +3,6 @@ import type { Page } from '@playwright/test'
 
 async function open(page: Page) {
   await page.goto('/?e2e')
-  await page.getByText('No thanks').click()
 }
 const node = (page: Page, label: string) => page.locator(`g.machine[aria-label^="${label}"]`)
 

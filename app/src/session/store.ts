@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { DEFAULT_CONFIG, LEVELS, freeSlot, levelById, rubric } from '../content'
 import { audio } from '../audio'
 import { Sim, applyTo } from '../engine/sim'
-import { telemetry } from '../telemetry'
 import type { CType, ChaosKind, Command, Design, DNode, EditEntry, Incident, Level, NodeConfig, Snapshot } from '../schema'
 
 export type Screen =
@@ -25,7 +24,6 @@ interface State {
   designs: Record<string, Design>
   fromRef: Record<string, boolean>
   settings: { speed: number; reducedMotion: boolean; sound: boolean }
-  consentAsked: boolean
   snap: Snapshot | null
   running: boolean
   runs: number
@@ -42,7 +40,6 @@ interface State {
   deadline: number | null
   chaos: { name: string; tick: number } | null
   go(s: Screen): void
-  setConsent(v: boolean): void
   enterLevel(id: string): void
   restartFromReference(): void
   place(type: CType): void
@@ -115,7 +112,6 @@ export const useGame = create<State>((set, get) => {
         if (ev.type === 'opened') {
           pager = inc
           if (inc.severity <= 2) focusNode = inc.node
-          telemetry.track('incident_opened', { level: levelId, severity: inc.severity })
           if (s0.settings.sound) audio.cue(`incident${inc.severity}` as 'incident1')
         } else if (s0.settings.sound) audio.cue('resolved')
       }
@@ -137,9 +133,7 @@ export const useGame = create<State>((set, get) => {
           lastRun: { levelId, seed: levelId === 'sandbox' ? 0 : level().chapter * 1000 + s.runs, startDesign: clone(runStart!), editLog: clone(sim.editLog) },
           stars: ev.ship && !level().interview && (!prev || n(stars) >= n(prev)) ? { ...s.stars, [levelId]: stars } : s.stars,
         })
-        telemetry.track('run_completed', { level: levelId, ship: ev.ship })
         if (ev.ship) {
-          telemetry.track('stars_awarded', { level: levelId, count: n(stars) })
           if (s.settings.sound) audio.cue('star')
         }
         return
@@ -153,7 +147,6 @@ export const useGame = create<State>((set, get) => {
     screen: { name: 'menu' },
     stars: {}, designs: {}, fromRef: {},
     settings: { speed: 1, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, sound: false },
-    consentAsked: false,
     snap: null, running: false, runs: 0, hints: 0, hintShown: 0, result: null, timeline: [], lastRun: null, message: '',
     selected: null, linkFrom: null, focusNode: null, pager: null, chaos: null, deadline: null,
 
@@ -161,7 +154,6 @@ export const useGame = create<State>((set, get) => {
       if (screen.name !== 'level' && screen.name !== 'debrief') resetRun()
       set({ screen, message: '', selected: null, linkFrom: null })
     },
-    setConsent: (v) => { telemetry.setConsent(v); set({ consentAsked: true }) },
     enterLevel: (id) => {
       resetRun()
       levelId = id
@@ -175,7 +167,6 @@ export const useGame = create<State>((set, get) => {
         runs: 0, hints: 0, hintShown: 0, message: '', selected: null, linkFrom: null,
         deadline: l.interview ? Date.now() + l.interview.minutes * 60000 : null,
       })
-      telemetry.track('level_started', { level: id })
     },
     restartFromReference: () => {
       resetRun()
@@ -230,7 +221,6 @@ export const useGame = create<State>((set, get) => {
       sandboxBase = clone(l.traffic.base)
       set({ runs, running: true, snap: null, result: null, timeline: [], pager: null, chaos: null, message: '' })
       if (s.settings.sound) audio.unlock()
-      telemetry.track('run_started', { level: levelId, run: runs })
       loop()
     },
     togglePause: () => {
@@ -248,7 +238,6 @@ export const useGame = create<State>((set, get) => {
       if (s.hintShown >= 3) return
       set({ hints: s.hints + 1, hintShown: s.hintShown + 1 })
       if (s.settings.sound) audio.cue('hint')
-      telemetry.track('hint_used', { level: levelId, tier: s.hintShown + 1 })
     },
     setReduced: (v) => set({ settings: { ...get().settings, reducedMotion: v } }),
     setSound: (v) => {

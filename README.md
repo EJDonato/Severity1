@@ -19,7 +19,7 @@ npm run e2e        # Playwright end-to-end tests (uses your installed Chrome)
 
 ## What is built
 
-Landing page with Play, the sandbox, 11 challenge levels and interview mode, all 14 components, a tick-based simulation with incidents, chaos events, SLO judging and star scoring, run replay and side-by-side design comparison in the debrief, a keyboard command palette (press `/`), screen-reader design description, reduced motion, sound (off by default), consent-gated anonymous analytics, offline play, and no persistence.
+Landing page with Play, the sandbox, 11 challenge levels and interview mode, all 14 components, a tick-based simulation with incidents, chaos events, SLO judging and star scoring, run replay and side-by-side design comparison in the debrief, a keyboard command palette (press `/`), screen-reader design description, reduced motion, sound (off by default), offline play, and no persistence.
 
 Removed on purpose: the Academy lessons, quizzes, component locking, test-out, the Codex and the before/after check. See the PRD's "Direction change".
 
@@ -31,6 +31,5 @@ Removed on purpose: the Academy lessons, quizzes, component locking, test-out, t
 - **Content is typed TypeScript, not JSON validated by JSON Schema.** `src/content/content.test.ts` enforces the same rules: every reference design passes, every starting design fails, minimum-design guards hold, wrong settings fail.
 - **Golden replays run in Chrome only**, not Firefox and Safari.
 - **The challenge numbers are tuned by script, not reviewed** by a senior engineer, as the PRD asks before a playtest.
-- **Analytics has no collection endpoint.** Events queue in memory and send only if `VITE_ANALYTICS_URL` is set.
 - **Sound is synthesized tones.** There is no authored art or audio.
 - **Not done:** colorblind-simulation checks, a Lighthouse load-time check, Storybook and screenshot regression, a manual WCAG audit.
