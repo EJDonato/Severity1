@@ -17,9 +17,18 @@ export const color = {
 
 export const motion = { fast: '150ms', base: '250ms', slow: '450ms', standard: 'cubic-bezier(0.25, 0.1, 0.25, 1)', alert: 'cubic-bezier(0.2, 0.9, 0.3, 1.1)' }
 export const CELL = 48
+// The editable board is a fixed canvas, in cells. Parts can go anywhere inside it.
+export const CANVAS = { w: 24, h: 11 }
+export const half = (v: number) => Math.round(v * 2) / 2
 export const SIZE: Record<CType, [number, number]> = {
   users: [2, 2], dns: [2, 2], cdn: [2, 2], limiter: [2, 2], lb: [3, 2], app: [2, 2], cache: [2, 2], queue: [2, 2],
   worker: [2, 2], db: [2, 2], shard: [2, 2], search: [2, 2], storage: [2, 2], monitor: [2, 2],
+}
+
+// Keep a part (and its label underneath) inside the canvas, on a half-cell grid.
+export function clampCell(type: CType, x: number, y: number): [number, number] {
+  const [w, h] = SIZE[type]
+  return [half(Math.max(0.5, Math.min(CANVAS.w - w - 0.5, x))), half(Math.max(0.25, Math.min(CANVAS.h - h - 0.75, y)))]
 }
 
 const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)

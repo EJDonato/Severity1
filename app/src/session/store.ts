@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import { DEFAULT_CONFIG, LEVELS, freeSlot, levelById, rubric } from '../content'
+import { DEFAULT_CONFIG, LEVELS, freeSlot, levelById, resolveSpot, rubric } from '../content'
 import { audio } from '../audio'
-import { Sim, applyTo } from '../engine/sim'
+import { Sim, applyTo, connectError } from '../engine/sim'
 import type { CType, ChaosKind, Command, Design, DNode, EditEntry, Incident, Level, NodeConfig, Snapshot } from '../schema'
 
 export type Screen =
@@ -35,6 +35,7 @@ interface State {
   message: string
   selected: string | null
   linkFrom: string | null
+  selectedEdge: { from: string; to: string } | null
   focusNode: string | null
   pager: Incident | null
   deadline: number | null
@@ -42,7 +43,10 @@ interface State {
   go(s: Screen): void
   enterLevel(id: string): void
   restartFromReference(): void
-  place(type: CType): void
+  place(type: CType, x?: number, y?: number): void
+  move(id: string, x: number, y: number): void
+  selectEdge(from: string, to: string): void
+  removeEdge(): void
   remove(id: string): void
   clickNode(id: string): void
   startLink(id: string): void
@@ -67,6 +71,11 @@ let runStart: Design | null = null
 let sandboxBase: Level['traffic']['base'] | null = null
 
 export const getSim = () => sim
+// Would this wire be allowed? Used to highlight valid targets while dragging a connection.
+export const connectCheck = (from: string, to: string): string | null => {
+  const d = useGame.getState().designs[levelId]
+  return d ? connectError(d, from, to) : 'no design'
+}
 const stop = () => { if (timer) clearTimeout(timer); timer = null }
 
 export const useGame = create<State>((set, get) => {
@@ -148,7 +157,7 @@ export const useGame = create<State>((set, get) => {
     stars: {}, designs: {}, fromRef: {},
     settings: { speed: 1, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, sound: false },
     snap: null, running: false, runs: 0, hints: 0, hintShown: 0, result: null, timeline: [], lastRun: null, message: '',
-    selected: null, linkFrom: null, focusNode: null, pager: null, chaos: null, deadline: null,
+    selected: null, linkFrom: null, selectedEdge: null, focusNode: null, pager: null, chaos: null, deadline: null,
 
     go: (screen) => {
       if (screen.name !== 'level' && screen.name !== 'debrief') resetRun()
@@ -173,7 +182,7 @@ export const useGame = create<State>((set, get) => {
       const l = level()
       set({ designs: { ...get().designs, [levelId]: clone(l.startDesign) }, fromRef: { ...get().fromRef, [levelId]: true }, runs: 0, hints: 0, hintShown: 0 })
     },
-    place: (type) => {
+    place: (type, px, py) => {
       const s = get()
       const d = s.designs[levelId]
       const l = level()
@@ -183,7 +192,7 @@ export const useGame = create<State>((set, get) => {
         return
       }
       const ghost = l.reference.nodes.find((n) => n.type === type && !d.nodes.some((x) => x.id === n.id))
-      const [x, y] = ghost ? [ghost.x, ghost.y] : freeSlot(type, d)
+      const [x, y] = px !== undefined && py !== undefined ? resolveSpot(d, type, px, py) : ghost ? [ghost.x, ghost.y] : freeSlot(type, d)
       let id: string = ghost?.id ?? type
       for (let i = 2; d.nodes.some((n) => n.id === id); i++) id = `${type}${i}`
       const cfg = DEFAULT_CONFIG[type]
@@ -192,8 +201,23 @@ export const useGame = create<State>((set, get) => {
       set({ selected: id })
     },
     remove: (id) => { edit({ kind: 'remove', id }); set({ selected: null }) },
+    move: (id, x, y) => {
+      const d = get().designs[levelId]
+      const n = d.nodes.find((q) => q.id === id)
+      if (!n) return
+      const [nx, ny] = resolveSpot(d, n.type, x, y, id)
+      edit({ kind: 'move', id, x: nx, y: ny })
+    },
+    selectEdge: (from, to) => set({ selectedEdge: { from, to }, selected: null, linkFrom: null, message: '' }),
+    removeEdge: () => {
+      const e = get().selectedEdge
+      if (!e) return
+      edit({ kind: 'disconnect', from: e.from, to: e.to })
+      set({ selectedEdge: null })
+    },
     clickNode: (id) => {
       const { linkFrom } = get()
+      set({ selectedEdge: null })
       if (linkFrom && linkFrom !== id) {
         const err = edit({ kind: 'connect', from: linkFrom, to: id })
         set({ linkFrom: null, selected: err ? get().selected : id })

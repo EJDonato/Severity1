@@ -33,6 +33,47 @@ test('sandbox: build, break it with chaos, and open a challenge', async ({ page 
   await expect(page.getByRole('heading', { name: /Tutorial/ })).toBeVisible()
 })
 
+async function drag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(to.x, to.y, { steps: 14 })
+  await page.mouse.up()
+}
+const centre = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 })
+
+test('drag and drop: drag a card onto the board, move it, wire it up, delete it', async ({ page }) => {
+  await open(page)
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  const board = (await page.locator('.board svg').boundingBox())!
+  const card = (await page.getByRole('button', { name: 'Add Cache' }).boundingBox())!
+  // 1. card -> board
+  await drag(page, centre(card), { x: board.x + board.width * 0.7, y: board.y + board.height * 0.85 })
+  const cache = node(page, 'Cache')
+  await expect(cache).toBeVisible()
+  // 2. move the part somewhere else
+  const before = (await cache.boundingBox())!
+  await drag(page, centre(before), { x: centre(before).x - 220, y: centre(before).y - 110 })
+  const after = (await cache.boundingBox())!
+  expect(Math.abs(after.x - before.x)).toBeGreaterThan(100)
+  // 3. drag from the app server's handle to the cache
+  const port = (await node(page, 'App Server').locator('.port circle').last().boundingBox())!
+  await drag(page, centre(port), centre(after))
+  await expect(page.getByRole('region', { name: 'Design description' })).toContainText('app sends requests to cache')
+  // 4. select the part and delete it
+  await cache.click()
+  await page.keyboard.press('Delete')
+  await expect(cache).toHaveCount(0)
+})
+
+test('dragging a wire onto a part that cannot accept it explains why', async ({ page }) => {
+  await open(page)
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  const port = (await node(page, 'Users').locator('.port circle').last().boundingBox())!
+  const db = (await node(page, 'Database').boundingBox())!
+  await drag(page, centre(port), centre(db))
+  await expect(page.getByText(/Users should never talk to the Database/)).toBeVisible()
+})
+
 test('every challenge can be shipped from its reference design', async ({ page }) => {
   await open(page)
   const ids: string[] = await page.evaluate(() => (window as any).__levels.map((l: { id: string }) => l.id))

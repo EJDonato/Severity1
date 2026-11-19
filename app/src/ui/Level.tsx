@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Board } from '../board/Board'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Board, clientToCell } from '../board/Board'
 import { levelById } from '../content'
 import { ALL_TYPES, PARAMS, costOf } from '../schema'
 import type { CType, ChaosKind, DNode, Design, NodeConfig } from '../schema'
-import { SPEEDS, useGame } from '../session/store'
+import { SPEEDS, connectCheck, useGame } from '../session/store'
+import { SIZE } from '../tokens'
 import { Icon, sevIcon } from './Icon'
 import { Challenges } from './Challenges'
+import { PartsPalette } from './PartsPalette'
 import { Palette } from './Palette'
 
 const total = (d: Design) => d.nodes.reduce((s, n) => s + costOf(n), 0)
@@ -84,6 +86,25 @@ export function LevelScreen({ id }: { id: string }) {
   }, [interview])
   const left = g.deadline ? Math.max(0, Math.round((g.deadline - now) / 1000)) : null
   const [picking, setPicking] = useState(false)
+  const boardRef = useRef<HTMLDivElement>(null)
+  // A part dropped from the palette lands centred on the pointer.
+  const onDrop = (type: CType, cx: number, cy: number) => {
+    const cell = clientToCell(boardRef.current, cx, cy)
+    if (!cell) return
+    const [w, h] = SIZE[type]
+    g.place(type, cell[0] - w / 2, cell[1] - h / 2)
+  }
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return
+      const st = useGame.getState()
+      if (st.selectedEdge) { e.preventDefault(); st.removeEdge() }
+      else if (st.selected) { e.preventDefault(); st.remove(st.selected) }
+    }
+    addEventListener('keydown', on)
+    return () => removeEventListener('keydown', on)
+  }, [])
   const ghosts = useMemo(() => (sandbox ? [] : level.reference.nodes.filter((n) => !design.nodes.some((x) => x.id === n.id) && level.placeable.includes(n.type))), [design, level, sandbox])
   const sel = design.nodes.find((n) => n.id === g.selected)
   const m = snap?.metrics
@@ -104,20 +125,19 @@ export function LevelScreen({ id }: { id: string }) {
       </header>
 
       <div className="level-grid">
+        <aside className="panel parts-col" aria-label="Parts">
+          <h3>Parts</h3>
+          <PartsPalette types={ALL_TYPES.filter((t) => level.placeable.includes(t))} onAdd={(t) => g.place(t)} onDrop={onDrop} />
+        </aside>
         <section className="stage" aria-label="Board">
-          <div className="toolbar" role="toolbar" aria-label="Components">
-            {ALL_TYPES.filter((t) => level.placeable.includes(t)).map((t) => (
-              <button key={t} className="chip" onClick={() => g.place(t)} title={`${PARAMS[t].label}, $${PARAMS[t].cost}/month`} aria-label={`Add ${PARAMS[t].label}`}>
-                <Icon name="plus" size={14} /> {PARAMS[t].label}
-              </button>
-            ))}
-          </div>
-
           {left !== null && <div className={`chaos-banner${left === 0 ? ' over' : ''}`} role="timer" aria-label="Time left"><Icon name="bolt" /> <strong className="mono">{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</strong> <span>{left === 0 ? 'Time is up. Run your design now.' : 'left to design. Press Start whenever you are ready.'}</span></div>}
           {chaosNow && <div className="chaos-banner" role="status"><Icon name="bolt" /> <strong>{chaosNow.name}</strong> <span>Watch what it takes down, and what survives.</span></div>}
 
-          <Board design={design} snap={snap} ghosts={ghosts} selected={g.selected} linkFrom={g.linkFrom} focus={g.focusNode}
-            reduced={g.settings.reducedMotion} speed={g.settings.speed} onNode={g.clickNode} onGhost={g.place} />
+          <div ref={boardRef}>
+            <Board design={design} snap={snap} ghosts={ghosts} selected={g.selected} linkFrom={g.linkFrom} focus={g.focusNode}
+              reduced={g.settings.reducedMotion} speed={g.settings.speed} onNode={g.clickNode} onGhost={(t) => g.place(t)}
+              editable onMove={g.move} onConnect={g.connect} canConnect={connectCheck} onEdge={g.selectEdge} selectedEdge={g.selectedEdge} />
+          </div>
           <div className="live" role="status" aria-live="polite">{g.message}</div>
 
           {sel && (
@@ -140,7 +160,15 @@ export function LevelScreen({ id }: { id: string }) {
               </div>
             </div>
           )}
-          {!sel && <p className="muted small">Click a component to inspect, scale, configure or connect it. Dashed outlines show where the next piece goes. Press <kbd>/</kbd> for the command palette.</p>}
+          {g.selectedEdge && (
+            <div className="panel inspect">
+              <div className="row between">
+                <strong>Connection: {g.selectedEdge.from} → {g.selectedEdge.to}</strong>
+                <button className="btn danger" onClick={g.removeEdge}>Remove connection</button>
+              </div>
+            </div>
+          )}
+          {!sel && !g.selectedEdge && <p className="muted small">Drag parts from the left onto the board. Drag a part to move it. Drag from the blue dot on a part to another part to connect them. Click a part or a line to select it, and press <kbd>Delete</kbd> to remove it. Press <kbd>/</kbd> for the command palette.</p>}
 
           {level.sandbox && (
             <div className="panel sandbox">

@@ -1,11 +1,11 @@
 // Content as data. shortcut: typed TS objects instead of JSON files + JSON Schema in CI; the content tests in content.test.ts play the CI role.
-import { SIZE } from '../tokens'
+import { SIZE, clampCell } from '../tokens'
 import type { CType, DNode, Design, Level, NodeConfig, Rates } from '../schema'
 
 // Candidate grid slots per component, in cells. The first free one is used when the player places a part.
 export const SLOTS: Record<CType, [number, number][]> = {
-  users: [[1, 4]], dns: [[4, 4]], limiter: [[7, 4]], cdn: [[7, 0]], lb: [[10, 4]], app: [[14, 4], [14, 8]],
-  cache: [[17, 4]], queue: [[17, 0]], worker: [[21, 0]], db: [[21, 4]], shard: [[21, 4], [25, 4]], search: [[17, 8]], storage: [[21, 8]], monitor: [[1, 8]],
+  users: [[0.5, 4]], dns: [[3, 4]], limiter: [[6, 4]], cdn: [[6, 0]], lb: [[9, 4]], app: [[13, 4], [13, 8]],
+  cache: [[16, 4]], queue: [[16, 0]], worker: [[19, 0]], db: [[19, 4]], shard: [[19, 4], [21, 4]], search: [[16, 8]], storage: [[19, 8]], monitor: [[0.5, 8]],
 }
 const at = (type: CType, i = 0) => SLOTS[type][i]
 const node = (type: CType, instances = 1, config?: NodeConfig, id: string = type): DNode => ({ id, type, x: at(type)[0], y: at(type)[1], instances, ...(config ? { config } : {}) })
@@ -212,9 +212,23 @@ export const DEFAULT_CONFIG: Partial<Record<CType, NodeConfig>> = {
   cache: { cacheSize: 1, expiry: 5 }, shard: { shardKey: 'region' }, limiter: { limit: 'low' },
 }
 
+// Parts keep a little room underneath for their label.
 const overlaps = (a: DNode, b: { x: number; y: number; type: CType }) => {
   const [aw, ah] = SIZE[a.type], [bw, bh] = SIZE[b.type]
-  return a.x < b.x + bw && b.x < a.x + aw && a.y < b.y + bh && b.y < a.y + ah
+  return a.x < b.x + bw && b.x < a.x + aw && a.y < b.y + bh + 0.6 && b.y < a.y + ah + 0.6
+}
+
+// Where a part dropped at (x, y) should land: clamped to the canvas, and nudged to the nearest free spot if it would sit on another part.
+export function resolveSpot(d: Design, type: CType, x: number, y: number, ignoreId?: string): [number, number] {
+  const [cx, cy] = clampCell(type, x, y)
+  const hit = (px: number, py: number) => d.nodes.some((n) => n.id !== ignoreId && overlaps(n, { x: px, y: py, type }))
+  if (!hit(cx, cy)) return [cx, cy]
+  for (let r = 0.5; r <= 10; r += 0.5)
+    for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, r], [r, -r], [-r, -r]]) {
+      const [nx, ny] = clampCell(type, cx + dx, cy + dy)
+      if (!hit(nx, ny)) return [nx, ny]
+    }
+  return [cx, cy]
 }
 export function freeSlot(type: CType, d: Design): [number, number] {
   for (const [x, y] of SLOTS[type]) if (!d.nodes.some((n) => overlaps(n, { x, y, type }))) return [x, y]

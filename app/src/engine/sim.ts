@@ -72,6 +72,11 @@ export function applyTo(d: Design, command: Command): string | null {
     const n = d.nodes.find((x) => x.id === command.id)
     if (!n) return 'unknown node'
     n.instances = Math.max(1, Math.min(16, Math.round(command.instances)))
+  } else if (command.kind === 'move') {
+    const n = d.nodes.find((x) => x.id === command.id)
+    if (!n) return 'unknown node'
+    n.x = command.x
+    n.y = command.y
   } else if (command.kind === 'setConfig') {
     const n = d.nodes.find((x) => x.id === command.id)
     if (!n) return 'unknown node'

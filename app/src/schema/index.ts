@@ -21,6 +21,7 @@ export type Command =
   | { kind: 'disconnect'; from: string; to: string }
   | { kind: 'setInstances'; id: string; instances: number }
   | { kind: 'setConfig'; id: string; config: NodeConfig }
+  | { kind: 'move'; id: string; x: number; y: number }
   | { kind: 'chaos'; event: Omit<ChaosEvent, 'tick'> }
 export interface EditEntry { tick: number; command: Command }
 

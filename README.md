@@ -19,7 +19,7 @@ npm run e2e        # Playwright end-to-end tests (uses your installed Chrome)
 
 ## What is built
 
-Landing page with Play, the sandbox, 11 challenge levels and interview mode, all 14 components, a tick-based simulation with incidents, chaos events, SLO judging and star scoring, run replay and side-by-side design comparison in the debrief, a keyboard command palette (press `/`), screen-reader design description, reduced motion, sound (off by default), offline play, and no persistence.
+Landing page with Play, the sandbox, 11 challenge levels and interview mode, all 14 components, a tick-based simulation with incidents, chaos events, SLO judging and star scoring, run replay and side-by-side design comparison in the debrief, a drag-and-drop board (drag parts from the Parts column onto the canvas, drag them around, drag from the blue dot on a part to another part to wire them), a keyboard command palette (press `/`), screen-reader design description, reduced motion, sound (off by default), offline play, and no persistence.
 
 Removed on purpose: the Academy lessons, quizzes, component locking, test-out, the Codex and the before/after check. See the PRD's "Direction change".
 

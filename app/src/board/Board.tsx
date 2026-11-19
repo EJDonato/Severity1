@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { CELL, SIZE, color } from '../tokens'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
+import { CANVAS, CELL, SIZE, clampCell, color } from '../tokens'
 import { PARAMS, REQ_TYPES } from '../schema'
 import type { CType, DNode, Design, Health, Mood, Snapshot } from '../schema'
 
@@ -19,6 +20,36 @@ interface Props {
   speed?: number
   onNode?: (id: string) => void
   onGhost?: (type: CType) => void
+  // Editing: drag parts to move them, drag from a part's blue handle to another part to connect them.
+  editable?: boolean
+  onMove?: (id: string, x: number, y: number) => void
+  onConnect?: (from: string, to: string) => void
+  canConnect?: (from: string, to: string) => string | null
+  onEdge?: (from: string, to: string) => void
+  selectedEdge?: { from: string; to: string } | null
+}
+
+export const OUT_TYPES: CType[] = ['users', 'dns', 'limiter', 'lb', 'app', 'cache', 'cdn', 'queue']
+
+// Convert a screen point to board cells, or null when the point is outside the board.
+export function clientToCell(root: Element | null, cx: number, cy: number): [number, number] | null {
+  const svg = root?.querySelector('svg')
+  const m = svg?.getScreenCTM()
+  if (!svg || !m) return null
+  const r = svg.getBoundingClientRect()
+  if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) return null
+  const p = new DOMPoint(cx, cy).matrixTransform(m.inverse())
+  return [p.x / CELL, p.y / CELL]
+}
+
+// A part's picture, for the parts palette.
+export function MachineIcon({ type, size = 48 }: { type: CType; size?: number }) {
+  const [cw, ch] = SIZE[type]
+  return (
+    <svg viewBox={`0 0 ${cw * CELL} ${ch * CELL}`} width={(size * cw) / 2} height={size} aria-hidden focusable="false">
+      <Art type={type} w={cw * CELL} h={ch * CELL} util={0} mood="happy" />
+    </svg>
+  )
 }
 
 // Status badge: distinct shape per state, never color alone (Design System 3.2).
@@ -90,9 +121,11 @@ function Art({ type, w, h, util, mood }: { type: CType; w: number; h: number; ut
 
 function edgePath(a: DNode, b: DNode) {
   const A = px(a), B = px(b)
-  const x1 = A.x + A.w, y1 = A.y + A.h / 2, x2 = B.x, y2 = B.y + B.h / 2
-  const mx = (x1 + x2) / 2
-  return { d: `M${x1} ${y1}C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`, p: [[x1, y1], [mx, y1], [mx, y2], [x2, y2]] as [number, number][] }
+  const fwd = B.x + B.w / 2 >= A.x + A.w / 2 // leave from the right when the target is ahead, from the left when it is behind
+  const x1 = fwd ? A.x + A.w : A.x, y1 = A.y + A.h / 2
+  const x2 = fwd ? B.x : B.x + B.w, y2 = B.y + B.h / 2
+  const dx = Math.max(40, Math.abs(x2 - x1) / 2) * (fwd ? 1 : -1)
+  return { d: `M${x1} ${y1}C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`, p: [[x1, y1], [x1 + dx, y1], [x2 - dx, y2], [x2, y2]] as [number, number][] }
 }
 const bez = (p: [number, number][], t: number): [number, number] => {
   const u = 1 - t
@@ -100,18 +133,24 @@ const bez = (p: [number, number][], t: number): [number, number] => {
   return [f(0), f(1)]
 }
 
-export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, reduced, speed = 1, onNode, onGhost }: Props) {
-  const all = [...design.nodes, ...ghosts]
+export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, reduced, speed = 1, onNode, onGhost, editable, onMove, onConnect, canConnect, onEdge, selectedEdge }: Props) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [link, setLink] = useState<{ from: string; x: number; y: number } | null>(null)
+  // While a part is being dragged, the board shows it (and its wires) at the pointer without touching the design.
+  const view = useMemo<Design>(() => (drag ? { ...design, nodes: design.nodes.map((n) => (n.id === drag.id ? { ...n, x: drag.x, y: drag.y } : n)) } : design), [design, drag])
+  const all = [...view.nodes, ...ghosts]
   const bounds = useMemo(() => {
+    if (editable) return { x: 0, y: 0, w: CANVAS.w * CELL, h: CANVAS.h * CELL }
     const xs = all.flatMap((n) => [px(n).x, px(n).x + px(n).w])
     const ys = all.flatMap((n) => [px(n).y, px(n).y + px(n).h])
     const minX = Math.min(CELL, ...xs) - CELL / 2, maxX = Math.max(...xs, 4 * CELL) + CELL / 2
     const minY = Math.min(...ys, CELL) - CELL / 2, maxY = Math.max(...ys, 4 * CELL) + CELL
     return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
     // eslint-disable-next-line
-  }, [design, ghosts.length])
-  const byId = new Map(design.nodes.map((n) => [n.id, n]))
-  const edges = design.edges.flatMap((e) => {
+  }, [view, ghosts.length, editable])
+  const byId = new Map(view.nodes.map((n) => [n.id, n]))
+  const edges = view.edges.flatMap((e) => {
     const a = byId.get(e.from), b = byId.get(e.to)
     return a && b ? [{ e, ...edgePath(a, b) }] : []
   })
@@ -119,41 +158,129 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
   const scaleN = Math.max(1, Math.ceil(rps / 60))
   const mood = snap?.mood ?? 'happy'
 
+  const toSvg = (cx: number, cy: number): [number, number] => {
+    const m = svgRef.current?.getScreenCTM()
+    if (!m) return [0, 0]
+    const p = new DOMPoint(cx, cy).matrixTransform(m.inverse())
+    return [p.x, p.y]
+  }
+  const listen = (move: (e: PointerEvent) => void, up: (e: PointerEvent) => void) => {
+    const end = (e: PointerEvent) => {
+      removeEventListener('pointermove', move)
+      removeEventListener('pointerup', end)
+      removeEventListener('pointercancel', end)
+      up(e)
+    }
+    addEventListener('pointermove', move)
+    addEventListener('pointerup', end)
+    addEventListener('pointercancel', end)
+  }
+
+  // Press on a part: a small movement is a click (select), a bigger one moves the part.
+  const startDrag = (e: ReactPointerEvent, n: DNode) => {
+    if (!editable || e.button !== 0) return
+    e.preventDefault()
+    const [sx, sy] = toSvg(e.clientX, e.clientY)
+    const off = [sx - n.x * CELL, sy - n.y * CELL]
+    let moved = false
+    let last: [number, number] = [n.x, n.y]
+    listen(
+      (ev) => {
+        if (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) return
+        moved = true
+        const [mx, my] = toSvg(ev.clientX, ev.clientY)
+        last = clampCell(n.type, (mx - off[0]) / CELL, (my - off[1]) / CELL)
+        setDrag({ id: n.id, x: last[0], y: last[1] })
+      },
+      () => {
+        setDrag(null)
+        if (moved) onMove?.(n.id, last[0], last[1])
+        else onNode?.(n.id)
+      },
+    )
+  }
+
+  // Press on a part's handle and drag onto another part to wire them.
+  const startLink = (e: ReactPointerEvent, n: DNode) => {
+    if (!editable || e.button !== 0) return
+    e.stopPropagation()
+    e.preventDefault()
+    const [sx, sy] = toSvg(e.clientX, e.clientY)
+    setLink({ from: n.id, x: sx, y: sy })
+    listen(
+      (ev) => { const [mx, my] = toSvg(ev.clientX, ev.clientY); setLink({ from: n.id, x: mx, y: my }) },
+      (ev) => {
+        setLink(null)
+        const [mx, my] = toSvg(ev.clientX, ev.clientY)
+        const hit = view.nodes.find((t) => {
+          const q = px(t)
+          return t.id !== n.id && mx >= q.x - 10 && mx <= q.x + q.w + 10 && my >= q.y - 10 && my <= q.y + q.h + 24
+        })
+        if (hit) onConnect?.(n.id, hit.id)
+      },
+    )
+  }
+
+  const linkNode = link ? byId.get(link.from) : undefined
+  const linkPath = (() => {
+    if (!link || !linkNode) return ''
+    const A = px(linkNode)
+    const x1 = A.x + A.w, y1 = A.y + A.h / 2
+    const dx = Math.max(40, Math.abs(link.x - x1) / 2)
+    return `M${x1} ${y1}C${x1 + dx} ${y1} ${link.x - dx} ${link.y} ${link.x} ${link.y}`
+  })()
+  const arrows: Record<string, [number, number]> = { ArrowLeft: [-0.5, 0], ArrowRight: [0.5, 0], ArrowUp: [0, -0.5], ArrowDown: [0, 0.5] }
+
   return (
-    <div className="board" style={{ aspectRatio: `${bounds.w} / ${bounds.h}` }}>
-      <svg viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`} role="group" aria-label="Design board">
+    <div className={`board${editable ? ' editable' : ''}${link ? ' linking' : ''}`} style={{ aspectRatio: `${bounds.w} / ${bounds.h}` }}>
+      <svg ref={svgRef} viewBox={`${bounds.x} ${bounds.y} ${bounds.w} ${bounds.h}`} role="group" aria-label="Design board" style={editable ? { touchAction: 'none' } : undefined}>
         <defs>
           <pattern id="grid" width={CELL} height={CELL} patternUnits="userSpaceOnUse"><circle cx={0} cy={0} r={1.4} fill={color.dot} /></pattern>
         </defs>
         <rect x={bounds.x} y={bounds.y} width={bounds.w} height={bounds.h} fill="url(#grid)" />
         {edges.map(({ e, d }) => {
           const st = snap?.edges.find((x) => x.from === e.from && x.to === e.to)
-          const flow = st ? REQ_TYPES.reduce((s, t) => s + st.flow[t], 0) : 0
-          return <path key={`${e.from}>${e.to}`} d={d} fill="none" stroke={st && st.failFrac > 0 ? color.critical : color.borderStrong} strokeLinecap="round" strokeWidth={reduced ? 2 + Math.min(10, flow / 25) : 2} strokeDasharray={reduced && flow > 0 ? '10 6' : undefined} className={reduced && flow > 0 ? 'flow-dash' : undefined} />
+          const flow = st ? REQ_TYPES.reduce((sum, t) => sum + st.flow[t], 0) : 0
+          const chosen = selectedEdge?.from === e.from && selectedEdge?.to === e.to
+          return (
+            <g key={`${e.from}>${e.to}`}>
+              <path d={d} fill="none" stroke={chosen ? color.accent : st && st.failFrac > 0 ? color.critical : color.borderStrong} strokeLinecap="round" strokeWidth={chosen ? 4 : reduced ? 2 + Math.min(10, flow / 25) : 2} strokeDasharray={reduced && flow > 0 ? '10 6' : undefined} className={reduced && flow > 0 ? 'flow-dash' : undefined} />
+              {editable && <path d={d} fill="none" stroke="transparent" strokeWidth={18} pointerEvents="stroke" className="edge-hit" onClick={() => onEdge?.(e.from, e.to)} />}
+            </g>
+          )
         })}
+        {link && <path d={linkPath} fill="none" stroke={color.accent} strokeWidth={3} strokeDasharray="7 6" strokeLinecap="round" pointerEvents="none" />}
         {ghosts.map((g) => {
           const { x, y, w, h } = px(g)
           return (
             <g key={g.id} className="ghost" tabIndex={0} role="button" aria-label={`Place ${PARAMS[g.type].label} here`} onClick={() => onGhost?.(g.type)} onKeyDown={(k) => (k.key === 'Enter' || k.key === ' ') && onGhost?.(g.type)}>
               <rect x={x} y={y} width={w} height={h} rx={22} fill="none" stroke={color.borderStrong} strokeWidth={1.75} strokeDasharray="6 6" />
-              <text x={x + w / 2} y={y + h + 22} textAnchor="middle" fill={color.textSecondary} fontSize={15} fontWeight={500}>{PARAMS[g.type].label}</text>
+              <text x={x + w / 2} y={y + h + 22} textAnchor="middle" fill={color.textSecondary} fontSize={16} fontWeight={500}>{PARAMS[g.type].label}</text>
             </g>
           )
         })}
-        {design.nodes.map((n) => {
+        {view.nodes.map((n) => {
           const { x, y, w, h } = px(n)
           const st = snap?.nodes[n.id]
           const health: Health = st?.health ?? 'healthy'
           const isSel = selected === n.id
+          const linkErr = link && link.from !== n.id ? canConnect?.(link.from, n.id) ?? null : 'self'
+          const validTarget = !!link && link.from !== n.id && linkErr === null
           return (
-            <g key={n.id} transform={`translate(${x},${y})`} className={`machine h-${health}${focus === n.id ? ' focus-pulse' : ''}`} tabIndex={0} role="button"
+            <g key={n.id} transform={`translate(${x},${y})`} className={`machine h-${health}${focus === n.id ? ' focus-pulse' : ''}${drag?.id === n.id ? ' dragging' : ''}`} tabIndex={0} role="button"
+              style={link && !validTarget && link.from !== n.id ? { opacity: 0.4 } : undefined}
               aria-label={`${PARAMS[n.type].label}, ${HEALTH_LABEL[health]}${st && n.type !== 'users' ? `, ${Math.round(st.util * 100)}% utilization` : ''}, ${n.instances} instance${n.instances > 1 ? 's' : ''}${linkFrom === n.id ? ', connecting' : ''}`}
-              aria-pressed={isSel} onClick={() => onNode?.(n.id)} onKeyDown={(k) => (k.key === 'Enter' || k.key === ' ') && (k.preventDefault(), onNode?.(n.id))}>
+              aria-pressed={isSel} onPointerDown={(e) => startDrag(e, n)} onClick={editable ? undefined : () => onNode?.(n.id)}
+              onKeyDown={(k) => {
+                if (k.key === 'Enter' || k.key === ' ') { k.preventDefault(); onNode?.(n.id) }
+                else if (editable && arrows[k.key]) { k.preventDefault(); const [nx, ny] = clampCell(n.type, n.x + arrows[k.key][0], n.y + arrows[k.key][1]); onMove?.(n.id, nx, ny) }
+              }}>
               {n.type !== 'users' && n.type !== 'lb' && Array.from({ length: Math.min(3, n.instances - 1) }, (_, i) => (
                 <rect key={i} x={(i + 1) * 7} y={-(i + 1) * 7} width={w} height={h} rx={22} fill={color.bg1} stroke={color.borderStrong} strokeWidth={1.5} />
               ))}
               <rect className="body" width={w} height={h} rx={22} fill={color.bg1} stroke={health === 'healthy' ? color.borderSubtle : HEALTH_COLOR[health]} strokeWidth={health === 'healthy' ? 1.5 : 2.5} strokeDasharray={health === 'down' ? '6 4' : undefined} />
               {(isSel || linkFrom === n.id) && <rect className="sel" x={-6} y={-6} width={w + 12} height={h + 12} rx={27} fill="none" stroke={color.accent} strokeWidth={3} strokeDasharray={linkFrom === n.id ? '8 5' : undefined} />}
+              {validTarget && <rect x={-6} y={-6} width={w + 12} height={h + 12} rx={27} fill={color.calmTint} fillOpacity={0.5} stroke={color.accent} strokeWidth={3} pointerEvents="none" />}
               {st && n.type !== 'users' && (
                 <g aria-hidden>
                   <rect x={16} y={h - 15} width={w - 32} height={5} rx={2.5} fill={color.borderSubtle} />
@@ -163,12 +290,19 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
               <Art type={n.type} w={w} h={h} util={st?.util ?? 0} mood={mood} />
               <Badge health={health} x={w - 4} y={4} />
               {n.instances > 1 && <text x={w - 8} y={h - 24} textAnchor="end" fill={color.textSecondary} fontSize={14} fontFamily="var(--mono)">×{n.instances}</text>}
-              <text x={w / 2} y={h + 24} textAnchor="middle" fill={color.ink} fontSize={15} fontWeight={600}>{PARAMS[n.type].label}{st && n.type !== 'users' ? <tspan fill={color.textSecondary} fontWeight={500}>{` ${Math.round(st.util * 100)}%`}</tspan> : null}</text>
+              <text x={w / 2} y={h + 24} textAnchor="middle" fill={color.ink} fontSize={16} fontWeight={600} pointerEvents="none">{PARAMS[n.type].label}{st && n.type !== 'users' ? <tspan fill={color.textSecondary} fontWeight={500}>{` ${Math.round(st.util * 100)}%`}</tspan> : null}</text>
+              {editable && OUT_TYPES.includes(n.type) && (
+                <g className="port" transform={`translate(${w},${h / 2})`} onPointerDown={(e) => startLink(e, n)}>
+                  <title>Drag to another part to connect</title>
+                  <circle r={16} fill="transparent" />
+                  <circle r={7} fill={color.accent} stroke="#fff" strokeWidth={2.5} />
+                </g>
+              )}
             </g>
           )
         })}
       </svg>
-      {!reduced && <Particles design={design} snap={snap} bounds={bounds} scaleN={scaleN} speed={speed} />}
+      {!reduced && <Particles design={view} snap={snap} bounds={bounds} scaleN={scaleN} speed={speed} />}
       {snap && <div className="scale" aria-label={`1 particle equals ${scaleN} requests`}>1 particle = {scaleN} request{scaleN > 1 ? 's' : ''}</div>}
     </div>
   )
