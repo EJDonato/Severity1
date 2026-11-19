@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INTERVIEW_LEVEL, LEVELS, SANDBOX_LEVEL } from '.'
+import { INTERVIEW_LEVEL, LEVELS, SANDBOX_LEVEL, STAGE_UNLOCKS, UNLOCK_ORDER } from '.'
 import { Sim, connectError, runAll } from '../engine/sim'
 import type { Design, EditEntry, Level, NodeConfig } from '../schema'
 
@@ -17,6 +17,15 @@ describe('content rules', () => {
   it('the sandbox and interview unlock every component, and there are 11 challenge levels', () => {
     expect(LEVELS).toHaveLength(11)
     for (const l of [SANDBOX_LEVEL, INTERVIEW_LEVEL]) expect(l.placeable).toHaveLength(14)
+  })
+  it('parts unlock in order: a stage never needs a locked part, and every part it unlocks is used in its solution', () => {
+    expect(new Set(UNLOCK_ORDER).size).toBe(14)
+    for (const l of LEVELS) {
+      for (const n of l.reference.nodes) expect(l.placeable, `${l.id} needs ${n.type}`).toContain(n.type)
+      for (const t of STAGE_UNLOCKS[l.id]) expect(l.reference.nodes.some((n) => n.type === t), `${l.id} unlocks ${t} but does not use it`).toBe(true)
+    }
+    // the order of the parts list is the order they unlock
+    expect(LEVELS.flatMap((l) => STAGE_UNLOCKS[l.id])).toEqual(UNLOCK_ORDER)
   })
   it('the sandbox opens on a working system', () => {
     expect(SANDBOX_LEVEL.startDesign.nodes.length).toBeGreaterThan(3)

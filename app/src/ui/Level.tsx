@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Board, clientToCell } from '../board/Board'
-import { LEVELS, PART_INFO, levelById } from '../content'
-import { ALL_TYPES, PARAMS, costOf } from '../schema'
+import { LEVELS, PART_INFO, STAGE_UNLOCKS, UNLOCK_ORDER, levelById } from '../content'
+import { PARAMS, costOf } from '../schema'
 import type { CType, ChaosKind, DNode, Design, NodeConfig } from '../schema'
 import { SPEEDS, connectCheck, useGame } from '../session/store'
 import { SIZE } from '../tokens'
@@ -49,11 +49,11 @@ function Settings({ node }: { node: DNode }) {
   const cfg = (c: NodeConfig) => g.setConfig(node.id, c)
   return (
     <div className="settings">
-      {(node.type === 'app' || node.type === 'lb') && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS[node.type].cost}/mo each`} />}
+      {(node.type === 'app' || node.type === 'lb') && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`Identical copies running side by side. More copies share more traffic; each costs $${PARAMS[node.type].cost}/mo.${node.type === 'app' ? ' Copies only share the work behind a Load Balancer.' : ''}`} />}
       {node.type === 'db' && <Stepper label="Read replicas" value={node.instances - 1} min={0} max={8} onChange={(v) => g.setInstances(node.id, v + 1)} hint="$120/mo each" />}
       {node.type === 'worker' && <Stepper label="Workers" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.worker.cost}/mo each`} />}
       {node.type === 'shard' && <Stepper label="Shards" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.shard.cost}/mo each`} />}
-      {node.type === 'search' && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.search.cost}/mo each`} />}
+      {node.type === 'search' && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`Identical copies of the index sharing the searches; each costs $${PARAMS.search.cost}/mo.`} />}
       {node.type === 'cache' && (
         <>
           <Select label="Cache size" value={node.config?.cacheSize ?? 2} options={[[1, 'Small'], [2, 'Medium'], [3, 'Large']]} onChange={(v) => cfg({ cacheSize: v as 1 | 2 | 3 })} />
@@ -151,7 +151,7 @@ export function LevelScreen({ id }: { id: string }) {
 
       <div className="game">
         <aside className="hotbar" aria-label="Parts">
-          <PartsPalette types={ALL_TYPES.filter((t) => level.placeable.includes(t))} onAdd={(t) => g.place(t)} onDrop={onDrop} />
+          <PartsPalette types={UNLOCK_ORDER} unlocked={level.placeable} fresh={STAGE_UNLOCKS[id] ?? []} onAdd={(t) => g.place(t)} onDrop={onDrop} />
         </aside>
 
         <section className={`arena${quake ? ' quake' : ''}`} aria-label="Board">

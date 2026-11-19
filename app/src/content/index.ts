@@ -166,6 +166,37 @@ export const LEVELS: Level[] = [
   }),
 ]
 
+// Parts appear in the order the game needs them, and each stage unlocks the part(s) its problem calls for.
+export const UNLOCK_ORDER: CType[] = ['users', 'app', 'db', 'storage', 'lb', 'cache', 'cdn', 'dns', 'queue', 'worker', 'search', 'shard', 'limiter', 'monitor']
+export const STAGE_UNLOCKS: Record<string, CType[]> = {
+  ch0: ['users', 'app', 'db'], ch1: ['storage'], ch2: ['lb'], ch3: ['cache'], ch4: ['cdn', 'dns'], ch5: ['queue', 'worker'],
+  ch6: ['search'], ch7: ['shard'], ch8: ['limiter'], ch9: ['monitor'], boss: [],
+}
+// Each stage can use everything unlocked so far.
+{
+  let open: CType[] = []
+  for (const l of LEVELS) { open = [...open, ...(STAGE_UNLOCKS[l.id] ?? [])]; l.placeable = open }
+}
+export const unlockStage = (t: CType) => LEVELS.findIndex((l) => STAGE_UNLOCKS[l.id]?.includes(t))
+
+// The introduction a part gets when it unlocks: what it is, and what it is for.
+export const PART_INTRO: Record<CType, { what: string; use: string }> = {
+  users: { what: 'The people using Friendbook.', use: 'Every request starts here. More users means more traffic.' },
+  app: { what: "A server that runs Friendbook's code.", use: 'It answers each request: it builds pages, saves posts and talks to the database.' },
+  db: { what: 'A store for structured data.', use: 'It keeps profiles, posts and friendships, and finds them quickly. Read replicas can share the reading.' },
+  storage: { what: 'A store for big files.', use: 'It holds photos and videos so they never clog the database. It is cheap, and built for large files.' },
+  lb: { what: 'A traffic director in front of your servers.', use: 'It spreads requests across several App Servers, so you can run more than one and skip any that break.' },
+  cache: { what: 'Fast memory for popular data.', use: 'It answers repeated reads instantly, so the database only sees what it has not seen before.' },
+  cdn: { what: 'Edge servers all around the world.', use: 'They keep copies of popular files, like photos, close to the people viewing them.' },
+  dns: { what: "The internet's directory.", use: 'It sends each user to the nearest copy of your system, so requests travel less far.' },
+  queue: { what: 'A waiting line for jobs.', use: 'Slow work, like notifying friends, waits here so users do not have to.' },
+  worker: { what: 'A machine that works in the background.', use: 'It takes jobs off the queue and does them. Add more when the queue starts to grow.' },
+  search: { what: 'An index of names.', use: 'It finds people instantly, without reading the whole database.' },
+  shard: { what: 'A database split into pieces.', use: 'It spreads data, and the writes that come with it, across several machines by a key such as user ID.' },
+  limiter: { what: 'A bouncer at the door.', use: 'It caps how many requests one user can send, so bots cannot crowd out real people.' },
+  monitor: { what: 'Dashboards and alarms.', use: 'It spots failures fast and alerts you, so broken machines are replaced sooner.' },
+}
+
 // What each part does, in plain words. Shown on hover in the hotbar and in the inspector.
 export const PART_INFO: Record<CType, string> = {
   users: 'Your users. Every request starts here.',
