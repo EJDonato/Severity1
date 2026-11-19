@@ -56,6 +56,7 @@ export function StageIntro({ level, index, onStart }: { level: Level; index: num
                 <li><Icon name="play" size={16} filled /> Press Play to send traffic through your system.</li>
                 <li><Icon name="plus" size={16} /> Drag parts from the left onto the board, and drag the blue dot on a part to connect it.</li>
                 <li><Icon name="warn" size={16} /> When something breaks, the part glows and an alert tells you where.</li>
+                <li><Icon name="check" size={16} /> Watch four numbers: traffic (requests per second), response time, errors and monthly cost.</li>
               </ul>
               <p className="muted small">First, meet the three parts you start with.</p>
             </>
@@ -67,9 +68,9 @@ export function StageIntro({ level, index, onStart }: { level: Level; index: num
               <div className="intro-goal">
                 <h3>{last ? 'Survive the night' : 'To clear this stage'}</h3>
                 <ul>
-                  <li>p95 latency under {level.slo.p95Ms} ms</li>
+                  <li>Response time under {level.slo.p95Ms} ms</li>
                   <li>Errors under {(level.slo.errorRate * 100).toFixed(1)}%</li>
-                  <li>Cost under ${level.budget} a month</li>
+                  <li>Monthly cost under ${level.budget}</li>
                 </ul>
               </div>
               <p className="muted small">

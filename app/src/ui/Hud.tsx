@@ -23,11 +23,11 @@ export function Tween({ value, format }: { value: number | null; format: (v: num
   return <>{shown === null ? '–' : format(shown)}</>
 }
 
-export function Chip({ label, value, format, bad, wide }: { label: string; value: number | null; format: (v: number) => string; bad?: boolean; wide?: boolean }) {
+export function Chip({ label, value, format, bad, wide, explain }: { label: string; value: number | null; format: (v: number) => string; bad?: boolean; wide?: boolean; explain?: string }) {
   return (
-    <div className={`tile chip-metric${bad ? ' bad' : ''}${wide ? ' wide' : ''}`}>
+    <div className={`tile chip-metric${bad ? ' bad' : ''}${wide ? ' wide' : ''}`} title={explain}>
       <span className="tile-label">{label}</span>
-      <span className="tile-value"><Tween value={value} format={format} /><span className="sr-only">{bad ? ' (over target)' : ''}</span></span>
+      <span className="tile-value"><Tween value={value} format={format} /><span className="sr-only">{bad ? ' (over target)' : ''}{explain ? `. ${explain}` : ''}</span></span>
     </div>
   )
 }

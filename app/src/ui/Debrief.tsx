@@ -54,7 +54,7 @@ export function Debrief({ id }: { id: string }) {
             <span className="mono small">tick {frame.snap.tick}/{frames.length}</span>
           </div>
           <div className="timeline" aria-hidden>{frames.map((f, i) => <span key={i} className={marks.includes(f.snap.tick) ? 'mark' : ''} style={{ left: `${(i / Math.max(1, frames.length - 1)) * 100}%` }} />)}</div>
-          <p className="muted small">p95 {Math.round(frame.snap.metrics.p95)} ms · errors {(frame.snap.metrics.errorRate * 100).toFixed(1)}% · cost ${frame.snap.metrics.cost}/mo</p>
+          <p className="muted small">Traffic {Math.round(frame.snap.metrics.rps)} req/s · response time {Math.round(frame.snap.metrics.p95)} ms · errors {(frame.snap.metrics.errorRate * 100).toFixed(1)}% · ${frame.snap.metrics.cost}/month</p>
         </>
       ) : <p className="muted small">Replay is available for the most recent run of this level.</p>}
 

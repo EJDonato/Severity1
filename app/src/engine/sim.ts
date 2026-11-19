@@ -437,8 +437,8 @@ export class Sim {
     const present = new Set(this.design.nodes.map((n) => n.type))
     const missing = level.minDesign.filter((t) => !present.has(t))
     const slos = [
-      { name: 'p95 latency', pass: p95 <= level.slo.p95Ms, measured: `${Math.round(p95)} ms`, target: `under ${level.slo.p95Ms} ms` },
-      { name: 'Error rate', pass: errRate <= level.slo.errorRate, measured: `${(errRate * 100).toFixed(2)}%`, target: `under ${(level.slo.errorRate * 100).toFixed(1)}%` },
+      { name: 'Response time', pass: p95 <= level.slo.p95Ms, measured: `${Math.round(p95)} ms`, target: `under ${level.slo.p95Ms} ms` },
+      { name: 'Errors', pass: errRate <= level.slo.errorRate, measured: `${(errRate * 100).toFixed(2)}%`, target: `under ${(level.slo.errorRate * 100).toFixed(1)}%` },
     ]
     const cost = this.cost()
     const ship = slos.every((s) => s.pass) && missing.length === 0 && this.history.length >= this.total

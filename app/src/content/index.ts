@@ -259,7 +259,7 @@ export function rubric(d: Design, slos: { pass: boolean }[], cost: number, budge
   const has = (t: CType) => d.nodes.some((n) => n.type === t)
   const count = (t: CType) => d.nodes.filter((n) => n.type === t).reduce((s, n) => s + n.instances, 0)
   return [
-    { label: 'Meets the latency target', pass: slos[0]?.pass ?? false },
+    { label: 'Pages load fast enough', pass: slos[0]?.pass ?? false },
     { label: 'Meets the error-rate target', pass: slos[1]?.pass ?? false },
     { label: 'Stays within budget', pass: cost <= budget },
     { label: 'Caches hot reads', pass: has('cache') },

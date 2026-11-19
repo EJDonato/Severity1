@@ -131,9 +131,9 @@ export function LevelScreen({ id }: { id: string }) {
   const ticks = level.traffic.cycle * level.cycles
   const cost = m ? m.cost : total(design)
   const goals = level.sandbox ? [] : [
-    { label: `p95 under ${level.slo.p95Ms} ms`, ok: m ? m.p95 <= level.slo.p95Ms : null },
+    { label: `Response time under ${level.slo.p95Ms} ms`, ok: m ? m.p95 <= level.slo.p95Ms : null },
     { label: `Errors under ${(level.slo.errorRate * 100).toFixed(1)}%`, ok: m ? m.errorRate <= level.slo.errorRate : null },
-    { label: `Under $${level.budget}/mo`, ok: cost <= level.budget },
+    { label: `Monthly cost under $${level.budget}`, ok: cost <= level.budget },
   ]
   const score = result?.rubric ? Math.round((result.rubric.filter((r) => r.pass).length / Math.max(1, result.rubric.length)) * 100) : 0
   const playLabel = ended ? (snap ? 'Run again' : 'Start') : g.running ? 'Pause' : 'Resume'
@@ -174,11 +174,10 @@ export function LevelScreen({ id }: { id: string }) {
               )}
             </div>
             <div className="hud-metrics" aria-label="Live metrics">
-              <Chip label="Requests/s" value={m ? m.rps : null} format={(v) => v.toFixed(0)} />
-              <Chip label="p95" value={m ? m.p95 : null} format={(v) => `${Math.round(v)} ms`} bad={!!m && !level.sandbox && m.p95 > level.slo.p95Ms} />
-              <Chip label="Errors" value={m ? m.errorRate * 100 : null} format={(v) => `${v.toFixed(1)}%`} bad={!!m && !level.sandbox && m.errorRate > level.slo.errorRate} />
-              <Chip label="Cost/mo" value={cost} format={(v) => `$${Math.round(v)}`} bad={!level.sandbox && cost > level.budget} />
-              {m && m.botRps > 0 && <Chip label="Bots/s" value={m.botRps} format={(v) => v.toFixed(0)} />}
+              <Chip label="Traffic" value={m ? m.rps : null} format={(v) => `${v.toFixed(0)} req/s`} explain="How many requests per second are hitting your system." />
+              <Chip label="Response time" value={m ? m.p95 : null} format={(v) => `${Math.round(v)} ms`} bad={!!m && !level.sandbox && m.p95 > level.slo.p95Ms} explain="How long a page takes for almost every user (95 out of 100). Under 300 ms feels instant." />
+              <Chip label="Errors" value={m ? m.errorRate * 100 : null} format={(v) => `${v.toFixed(1)}%`} bad={!!m && !level.sandbox && m.errorRate > level.slo.errorRate} explain="The share of requests that failed. Users see these as broken pages." />
+              <Chip label="Monthly cost" value={cost} format={(v) => `$${Math.round(v)}`} bad={!level.sandbox && cost > level.budget} explain="What your whole system costs to run each month." />
             </div>
           </div>
 
