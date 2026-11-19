@@ -8,11 +8,11 @@ web
 
 ## Users
 
-Primary: junior developers and students who can code but have never designed a system at scale. Also interview-preppers (harder SLOs, trade-offs) and curious non-engineers (plain-language lessons, Codex glossary). Desktop first, tablets supported, no phones. Sessions run about 20 minutes.
+Primary: junior developers and students who can code but have never designed a system at scale. Also interview-preppers (harder challenges, interview mode with a scored rubric) and curious non-engineers. Desktop first, tablets supported, phones only see a note that the board needs a bigger screen. Sessions run about 20 minutes.
 
 ## Product Purpose
 
-Severity 1 teaches system design by letting players build a fictional social network, Friendbook, from live infrastructure components and watch real traffic stress and break it. Each concept is taught in a short interactive lesson, then tested in a level where the player fixes a failing system. Success: players finish the campaign able to explain and sketch Friendbook's architecture, and say it was fun.
+Severity 1 is a game about system design. Players build a fictional social network, Friendbook, from live infrastructure components and watch real traffic stress and break it. It is a game, not a course: there are no lessons or quizzes. A landing page has one Play button that opens a sandbox with every part unlocked; optional Challenges (11 scenarios and an interview mode) add goals, stars and debriefs. Success: players can explain and sketch why a system breaks and how to fix it, and say it was fun.
 
 ## Positioning
 
@@ -20,14 +20,14 @@ The system is something you can see running: requests are particles, machines sh
 
 ## Operating Context
 
-Core loop: learn (Academy lesson), build (place and wire components), simulate (live traffic), diagnose (incident), fix, debrief with stars. Players are on-call-style engineers reading incidents, metrics (rps, p50/p95, errors, cost) and a board. Lesson toys reuse the real engine. Vertical slice built: Tutorial and Chapters 1-2.
+Core loop: build (drag parts onto the board and drag wires between them), run live traffic, break it (chaos buttons, or a challenge's scripted events), diagnose the incident, fix, and in a challenge get a debrief with a replay. Players read incidents, metrics (rps, p50/p95, errors, cost) and the board like an on-call engineer.
 
 ## Capabilities and Constraints
 
 - Stack: React 19 + TypeScript strict + Vite, Zustand, SVG board with canvas particles; simulation is a pure seeded engine. No persistence in v1, no backend.
 - Every status carries icon and shape as well as colour; request types differ by shape (circle read, square write, diamond photo, triangle upload).
 - Accessibility: WCAG 2.1 AA text, keyboard-operable building, reduced-motion mode, adjustable speed, minimum 14px text, nothing flashes over 3 per second.
-- Terminology: SEV-1/2/3, SLO, p95, Ship it / Thrifty / Senior engineer stars, Codex, debrief.
+- Terminology: SEV-1/2/3, SLO, p95, Ship it / Thrifty / Senior engineer stars, Challenges, debrief, sandbox.
 
 ## Brand Commitments
 
@@ -43,7 +43,7 @@ PRDs in repo root (product, architecture, design system). Working slice in `app/
 ## Product Principles
 
 1. State is visible on the machine itself before it appears in a number.
-2. Teach before testing; judgment over memorised answers.
+2. Play first: learning comes from cause and effect on the board, never from a quiz.
 3. Never colour alone.
 4. Calm by default, loud on purpose.
 5. Original and fictional: nothing borrowed from a real company's look.

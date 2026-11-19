@@ -93,7 +93,7 @@ System font stack only (SF on Apple devices, Helvetica/Arial elsewhere). Display
 
 ## Layout
 
-Centered, max width 1320. The start screen is a single column hero over a grid of chapter cards. The level screen is three columns (232px toolbox, flexible board, 328px side rail), collapsing to one at 1100px with the toolbox as a wrapped row. Generous vertical rhythm: 56 to 72px between hero blocks.
+Centered, max width 1320. The landing page is a single centered hero (headline, lede, one Play button) over a live demo board. The level screen is three columns (196px parts, flexible board, 304px run and metrics); at 1100px the parts become a full-width grid above a two-column board and rail; at 760px everything stacks and a note says the board needs a bigger screen. Generous vertical rhythm: 56 to 72px between hero blocks.
 
 ## Elevation & Depth
 
@@ -107,7 +107,10 @@ Large radii: 16 tiles, 22 panels, 26 cards and board, 980 pill buttons and chips
 
 - **Machine:** white rounded tile, ink line art, a status badge (check circle, triangle, octagon, flame, crossed square), a thin utilization bar along the bottom, a ring in the state colour when not healthy.
 - **Buttons:** pill. Primary blue, default light grey, quiet blue text link.
-- **Alert (pager):** floating frosted card with a severity icon; no coloured block.
+- **Alert (pager):** floating frosted card at the bottom right with a severity icon; SEV-2 and SEV-3 step aside after 8 seconds, SEV-1 waits to be dismissed; hidden while a result dialog is open.
+- **Parts palette:** a column of white cards (logo tile, name, monthly cost) on the grey surface; drag a card onto the board, or click it to add at the next free spot. Becomes a wrapping grid above the board below 1100px.
+- **Board editing:** parts drag freely on a fixed canvas (half-cell snap); a blue handle on a part's right edge drags a wire; valid targets get an accent ring, others dim to 40%.
+- **How-to line:** four short inline hints under the board with a blue-dot glyph and keycaps, shown when nothing is selected.
 - **Metric tile:** white card, large number, small label; turns soft orange with a warning icon when over target.
 - **Stars:** yellow filled star icons when earned.
 

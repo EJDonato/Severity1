@@ -94,6 +94,12 @@ export function LevelScreen({ id }: { id: string }) {
     const [w, h] = SIZE[type]
     g.place(type, cell[0] - w / 2, cell[1] - h / 2)
   }
+  // SEV-2 and SEV-3 alerts step aside after a few seconds; SEV-1 stays until it is dismissed. All stay in the Incidents list.
+  useEffect(() => {
+    if (!g.pager || g.pager.severity === 1) return
+    const t = setTimeout(() => useGame.getState().dismissPager(), 8000)
+    return () => clearTimeout(t)
+  }, [g.pager])
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
@@ -115,6 +121,7 @@ export function LevelScreen({ id }: { id: string }) {
 
   return (
     <div className="level">
+      <p className="small-screen-note" role="note">The board needs a bigger screen. Use a tablet or computer to build; you can still look around here.</p>
       <header className="level-head">
         <button className="btn quiet" onClick={() => g.go({ name: 'menu' })}><Icon name="back" /> Home</button>
         <div>
@@ -168,7 +175,14 @@ export function LevelScreen({ id }: { id: string }) {
               </div>
             </div>
           )}
-          {!sel && !g.selectedEdge && <p className="muted small">Drag parts from the left onto the board. Drag a part to move it. Drag from the blue dot on a part to another part to connect them. Click a part or a line to select it, and press <kbd>Delete</kbd> to remove it. Press <kbd>/</kbd> for the command palette.</p>}
+          {!sel && !g.selectedEdge && (
+            <ul className="howto muted small" aria-label="How to build">
+              <li>Drag a part onto the board</li>
+              <li>Drag the <span className="dot" aria-hidden /> blue dot to another part to connect</li>
+              <li><kbd>Delete</kbd> removes what is selected</li>
+              <li><kbd>/</kbd> opens commands</li>
+            </ul>
+          )}
 
           {level.sandbox && (
             <div className="panel sandbox">
@@ -200,7 +214,7 @@ export function LevelScreen({ id }: { id: string }) {
             <div className="row" role="group" aria-label="Speed">
               {SPEEDS.map((s) => <button key={s} className="btn small" aria-pressed={g.settings.speed === s} onClick={() => g.setSpeed(s)}>{s}×</button>)}
             </div>
-            {!sandbox && <button className="btn quiet small" onClick={g.restartFromReference}>Restart chapter from reference design</button>}
+            {!sandbox && <button className="btn quiet small restart-ref" onClick={g.restartFromReference}>Start over from the reference design</button>}
           </div>
 
           {(
@@ -235,9 +249,10 @@ export function LevelScreen({ id }: { id: string }) {
               <h3>Hints</h3>
               {hint.map((h, i) => <p key={i} className="small">{i + 1}. {h}</p>)}
               {g.hintShown < 3 && (
-                <button className="btn small" onClick={g.useHint}>
-                  {['Nudge', 'Concept', 'Specific fix'][g.hintShown]} (costs the Senior engineer star)
-                </button>
+                <>
+                  <button className="btn small" onClick={g.useHint}>{['Show a nudge', 'Show the concept', 'Show the fix'][g.hintShown]}</button>
+                  {g.hintShown === 0 && <p className="muted small hint-note">Using a hint gives up the Senior engineer star.</p>}
+                </>
               )}
             </div>
           )}
@@ -254,7 +269,7 @@ export function LevelScreen({ id }: { id: string }) {
       <Palette />
       {picking && <Challenges onClose={() => setPicking(false)} />}
 
-      {g.pager && (
+      {g.pager && !result && (
         <div className={`pager sev${g.pager.severity}`} role="alert">
           <span className="pager-plate" aria-hidden />
           <div className="pager-card">

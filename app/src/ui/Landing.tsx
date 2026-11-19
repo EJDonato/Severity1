@@ -31,7 +31,7 @@ export function Landing() {
         <h1>See how systems<br />really work.</h1>
         <p className="lede">Build a social network from a dorm-room site into a global platform, and watch real traffic push it until it breaks.</p>
         <div className="row center">
-          <button className="btn primary huge" onClick={() => g.enterLevel('sandbox')} autoFocus>Play</button>
+          <button className="btn primary huge" onClick={() => g.enterLevel('sandbox')}>Play</button>
         </div>
         <p className="muted small">Nothing is saved. Each visit starts fresh.</p>
       </section>

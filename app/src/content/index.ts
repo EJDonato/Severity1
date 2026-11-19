@@ -171,7 +171,7 @@ export const LEVELS: Level[] = [
 export const SANDBOX_LEVEL: Level = lvl({
   id: 'sandbox', chapter: 99, title: 'Sandbox', story: 'Everything is unlocked. Add parts, wire them up, set the traffic, and break it on purpose with the chaos buttons.',
   placeable: ALL_TYPES_NO_USERS(), startDesign: dCh2Ref, reference: dBossRef,
-  traffic: { base: rates(150, 25, 80, 10, 0, 10), peak: 1.3, cycle: 40, fanout: 0 }, cycles: 1000, budget: 99999, minDesign: [], regions, sandbox: true,
+  traffic: { base: rates(150, 25, 80, 10, 0, 10), peak: 1.3, cycle: 40, fanout: 0 }, cycles: 1000, budget: 99999, minDesign: [], sandbox: true,
   hints: ['', '', ''], debrief: { note: '', diffs: {} },
 })
 function ALL_TYPES_NO_USERS(): CType[] { return ['users', 'dns', 'cdn', 'limiter', 'lb', 'app', 'cache', 'queue', 'worker', 'db', 'shard', 'search', 'storage', 'monitor'] }
