@@ -17,7 +17,7 @@ export interface RunRecord { levelId: string; seed: number; startDesign: Design;
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T
 export const SPEEDS = [0.5, 1, 2, 4]
 const TICK_MS = 250 // wall time per tick at 1x
-const SINGLE: CType[] = ['users', 'dns', 'cdn', 'limiter', 'lb', 'queue', 'monitor']
+export const SINGLE: CType[] = ['users', 'dns', 'cdn', 'limiter', 'queue', 'monitor']
 
 interface State {
   screen: Screen

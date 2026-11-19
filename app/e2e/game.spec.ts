@@ -6,6 +6,16 @@ async function open(page: Page) {
 }
 const node = (page: Page, label: string) => page.locator(`g.machine[aria-label^="${label}"]`).first()
 
+// The welcome card, then each starting part on its own card, then the board.
+async function startFirstDay(page: Page) {
+  await expect(page.getByRole('dialog', { name: 'Welcome to Friendbook' })).toBeVisible()
+  await page.getByRole('button', { name: 'Next' }).click()
+  for (const part of ['Users', 'App Server', 'Database']) {
+    await expect(page.getByRole('dialog', { name: part })).toBeVisible()
+    await page.getByRole('button', { name: part === 'Database' ? 'Start the first day' : 'Next' }).click()
+  }
+}
+
 async function openSandbox(page: Page) {
   await page.getByRole('button', { name: /open the sandbox/ }).click()
   await expect(page.getByRole('heading', { name: 'Sandbox', exact: true })).toBeVisible()
@@ -14,8 +24,7 @@ async function openSandbox(page: Page) {
 test('Play starts the game: welcome, a first run, then one new problem with the design carried over', async ({ page }) => {
   await open(page)
   await page.getByRole('button', { name: 'Play', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Welcome to Friendbook' })).toBeVisible()
-  await page.getByRole('button', { name: 'Start the first day' }).click()
+  await startFirstDay(page)
   await expect(page.getByRole('heading', { name: 'Launch day' })).toBeVisible()
   await expect(page.getByText('Stage 1 of 11')).toBeVisible()
   await expect(page.getByText(/sandbox/i)).toHaveCount(0)
@@ -27,8 +36,10 @@ test('Play starts the game: welcome, a first run, then one new problem with the 
   await expect(page.getByText('Stage cleared!')).toBeVisible({ timeout: 60_000 })
   await page.getByRole('button', { name: /Next problem/ }).click()
   await expect(page.getByRole('dialog', { name: 'Photos arrive' })).toBeVisible()
-  await expect(page.getByRole('dialog').getByText('New part unlocked')).toBeVisible()
-  await expect(page.getByRole('dialog').getByText('A store for big files.')).toBeVisible()
+  await page.getByRole('button', { name: 'Next' }).click()
+  const card = page.getByRole('dialog', { name: 'Object Storage' }) // the new part gets a card of its own
+  await expect(card.getByText('New part unlocked')).toBeVisible()
+  await expect(card.getByText('A store for big files.')).toBeVisible()
   await page.getByRole('button', { name: "Let's go" }).click()
   await expect(page.getByText('Stage 2 of 11')).toBeVisible()
   for (const part of ['Users', 'App Server', 'Database']) await expect(node(page, part)).toBeVisible()
@@ -49,7 +60,7 @@ test('sandbox: build, break it with chaos, and open a stage', async ({ page }) =
   await page.getByRole('button', { name: 'Stages' }).click()
   await expect(page.getByRole('listitem').filter({ hasText: 'Photos arrive' }).getByRole('button')).toHaveCount(0) // locked until stage 1 is solved
   await page.getByRole('listitem').filter({ hasText: 'Launch day' }).getByRole('button', { name: 'Play' }).click()
-  await page.getByRole('button', { name: 'Start the first day' }).click()
+  await startFirstDay(page)
   await expect(page.getByRole('heading', { name: 'Launch day' })).toBeVisible()
 })
 
@@ -88,7 +99,7 @@ test('drag and drop: drag a card onto the board, move it, wire it up, delete it'
 test('scaling means more App Servers on the board, and sharing them needs a Load Balancer', async ({ page }) => {
   await open(page)
   await page.getByRole('button', { name: 'Play', exact: true }).click()
-  await page.getByRole('button', { name: 'Start the first day' }).click()
+  await startFirstDay(page)
   await page.locator('g.machine[aria-label^="App Server"]').first().click()
   await expect(page.getByRole('group', { name: 'Instances' })).toHaveCount(0) // no instance counter: you add machines instead
   const board = (await page.locator('.board svg').boundingBox())!
@@ -99,6 +110,13 @@ test('scaling means more App Servers on the board, and sharing them needs a Load
   const second = (await page.locator('g.machine[aria-label^="App Server"]').nth(1).boundingBox())!
   await drag(page, centre(port), centre(second))
   await expect(page.getByText(/Add a Load Balancer to share traffic between several/)).toBeVisible()
+})
+
+test('a second Load Balancer can be placed (redundancy needs two)', async ({ page }) => {
+  await open(page)
+  await openSandbox(page)
+  await page.getByRole('button', { name: 'Add Load Balancer' }).click()
+  await expect(page.locator('g.machine[aria-label^="Load Balancer"]')).toHaveCount(2)
 })
 
 test('dragging a wire onto a part that cannot accept it explains why', async ({ page }) => {
