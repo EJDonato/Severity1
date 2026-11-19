@@ -219,7 +219,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 24px 64px; }
 
 /* rail */
 .rail { display: flex; flex-direction: column; gap: 12px; }
-.inspector-body, .inspector-empty { animation: fade-up 300ms var(--out); }
+.inspector-body { animation: fade-up 300ms var(--out); }
 .inspector-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
 .inspector-head h3 { margin: 0; }
 .pill { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 980px; font-size: 12.5px; font-weight: 600; text-transform: capitalize; background: var(--c-ok-tint); color: var(--c-ok-text); }
@@ -237,26 +237,19 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 24px 64px; }
 .stepper-value { min-width: 24px; text-align: center; font: 600 17px var(--display); font-variant-numeric: tabular-nums; animation: tick 260ms var(--spring); }
 @keyframes tick { from { transform: translateY(-6px) scale(1.3); opacity: 0.4; } }
 .field { display: grid; gap: 4px; }
-.objectives ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.objectives li { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.objectives .check { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--c-border-strong); background: #fff; }
-.objectives li.ok .check { border-color: var(--c-ok); background: var(--c-ok); color: #fff; animation: badge-pop 420ms var(--spring); }
-.objectives li.bad .check { border-color: var(--c-critical); background: var(--c-critical-tint); color: var(--c-critical-text); animation: shake-x 360ms var(--out); }
-.objectives li.bad { color: var(--c-critical-text); }
 .chaos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
 .chaos-btn { justify-content: flex-start; background: #fff; min-width: 0; white-space: normal; text-align: left; line-height: 1.2; padding: 6px 10px; font-size: 13.5px; }
 .chaos-btn:hover:not(:disabled) { background: var(--c-warn-tint); }
 .chaos-btn .icon { color: var(--c-warn-text); }
 .incidents { list-style: none; margin: 0; padding: 0; display: grid; font-size: 13.5px; }
-.incidents li { padding: 7px 0; border-bottom: 1px solid var(--c-border-subtle); display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; animation: slide-in 320ms var(--out); }
+.incidents li { padding: 8px 0; border-bottom: 1px solid var(--c-border-subtle); display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; line-height: 1.35; animation: slide-in 320ms var(--out); }
+.incidents li .icon { margin-top: 1px; }
 .incidents li:last-child { border-bottom: 0; }
 .incidents li.sev1 { color: var(--c-critical-text); font-weight: 500; }
 .incidents li.sev2 { color: var(--c-danger-text); font-weight: 500; }
 .incidents li.sev3, .incidents li.chaos { color: var(--c-warn-text); font-weight: 500; }
 .incidents li.ok, .slos li.ok { color: var(--c-ok-text); }
 .hint { animation: fade-up 320ms var(--out); }
-.hint-note { margin: 8px 0 0; }
-.restart-ref { padding: 0; margin-top: 8px; }
 
 /* result */
 .modal-back { position: fixed; inset: 0; background: rgb(0 0 0 / 0.32); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: grid; place-items: center; z-index: 200; padding: 16px; animation: fade 240ms var(--out); }
@@ -294,9 +287,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 24px 64px; }
 .challenge-list li:last-child { border-bottom: 0; }
 .challenge-list p { margin: 2px 0 0; }
 
-.objectives-head { margin: 0 0 2px; }
-.objectives-head h3 { margin: 0; }
-.objectives-note { margin: 0 0 10px; }
 
 /* parts: locked tiles and the New badge */
 .part { position: relative; }
@@ -328,6 +318,19 @@ main { max-width: 1440px; margin: 0 auto; padding: 20px 24px 64px; }
 .unlock-dots li { width: 8px; height: 8px; border-radius: 50%; background: var(--c-border-subtle); transition: width 300ms var(--spring), background var(--m-base) var(--out); }
 .unlock-dots li.past { background: var(--c-border-strong); }
 .unlock-dots li.on { width: 22px; border-radius: 4px; background: var(--c-accent); }
+
+/* the goal card: three checks and a quiet way to ask for help */
+.goal h3 { margin-bottom: 12px; }
+.goal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.goal-list li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+.goal-list .check { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--c-border-strong); background: #fff; }
+.goal-list li.ok .check { border-color: var(--c-ok); background: var(--c-ok); color: #fff; animation: badge-pop 420ms var(--spring); }
+.goal-list li.bad { color: var(--c-critical-text); }
+.goal-list li.bad .check { border-color: var(--c-critical); background: var(--c-critical-tint); color: var(--c-critical-text); animation: shake-x 360ms var(--out); }
+.goal-hints { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--c-border-subtle); }
+.goal-hints .hint { margin: 0 0 8px; padding: 10px 12px; border-radius: 12px; background: #fff; }
+.hint-link { padding: 0; min-height: 28px; }
+.incidents-panel { animation: fade-up 320ms var(--out); }
 
 /* stage intro and stages list */
 .modal.intro { max-width: 600px; padding: 40px; }

@@ -131,8 +131,9 @@ export function LevelScreen({ id }: { id: string }) {
   const ticks = level.traffic.cycle * level.cycles
   const cost = m ? m.cost : total(design)
   const goals = level.sandbox ? [] : [
-    { label: `Response time under ${level.slo.p95Ms} ms`, ok: m ? m.p95 <= level.slo.p95Ms : null },
-    { label: `Errors under ${(level.slo.errorRate * 100).toFixed(1)}%`, ok: m ? m.errorRate <= level.slo.errorRate : null },
+    // While running the checks follow the live numbers; once a run ends they show how it was judged, so they always agree with the result.
+    { label: `Response time under ${level.slo.p95Ms} ms`, ok: result ? result.slos[0].pass : m ? m.p95 <= level.slo.p95Ms : null },
+    { label: `Errors under ${(level.slo.errorRate * 100).toFixed(1)}%`, ok: result ? result.slos[1].pass : m ? m.errorRate <= level.slo.errorRate : null },
     { label: `Monthly cost under $${level.budget}`, ok: cost <= level.budget },
   ]
   const score = result?.rubric ? Math.round((result.rubric.filter((r) => r.pass).length / Math.max(1, result.rubric.length)) * 100) : 0
@@ -211,8 +212,9 @@ export function LevelScreen({ id }: { id: string }) {
         </section>
 
         <aside className="rail">
-          <div className="panel inspector" aria-label="Inspector">
-            {sel ? (
+          {/* The side stays quiet: one goal card, plus the inspector or incidents only when there is something to show. */}
+          {sel && (
+            <div className="panel inspector" aria-label="Inspector">
               <div className="inspector-body" key={sel.id}>
                 <div className="inspector-head">
                   <h3>{PARAMS[sel.type].label}</h3>
@@ -220,12 +222,13 @@ export function LevelScreen({ id }: { id: string }) {
                 </div>
                 <p className="small part-info">{PART_INFO[sel.type]}</p>
                 {selState && sel.type !== 'users' && (
-                  <div className="gauge" aria-label={`${Math.round(selState.util * 100)} percent used`}>
-                    <span className={`h-${selState.health}`} style={{ transform: `scaleX(${Math.min(1, selState.util)})` }} />
-                  </div>
+                  <>
+                    <div className="gauge" aria-label={`${Math.round(selState.util * 100)} percent busy`}>
+                      <span className={`h-${selState.health}`} style={{ transform: `scaleX(${Math.min(1, selState.util)})` }} />
+                    </div>
+                    <p className="muted small">{Math.round(selState.util * 100)}% busy · {Math.round(selState.latencyMs)} ms</p>
+                  </>
                 )}
-                {selState && sel.type !== 'users' && <p className="muted small">{Math.round(selState.util * 100)}% used · {Math.round(selState.latencyMs)} ms</p>}
-                <p className="muted small">{design.edges.filter((e) => e.from === sel.id).map((e) => `→ ${e.to}`).join('  ') || 'No outgoing connections yet.'}</p>
                 <Settings node={sel} />
                 <div className="row">
                   {CAN_CONNECT.includes(sel.type) && (
@@ -234,25 +237,22 @@ export function LevelScreen({ id }: { id: string }) {
                   <button className="btn small danger" onClick={() => g.remove(sel.id)}>Remove</button>
                 </div>
               </div>
-            ) : g.selectedEdge ? (
+            </div>
+          )}
+          {!sel && g.selectedEdge && (
+            <div className="panel inspector" aria-label="Inspector">
               <div className="inspector-body" key="edge">
                 <h3>Connection</h3>
                 <p className="muted">{g.selectedEdge.from} → {g.selectedEdge.to}</p>
                 <button className="btn small danger" onClick={g.removeEdge}>Remove connection</button>
               </div>
-            ) : (
-              <div className="inspector-empty">
-                <h3>Inspector</h3>
-                <p className="muted small">Select a part to see its load and tune it. Select a line to remove it.</p>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {goals.length > 0 && (
-            <div className="panel objectives">
-              <div className="row between objectives-head"><h3>{interview ? 'Targets' : 'Objectives'}</h3><span className="muted small">{snap ? 'live' : 'press Start'}</span></div>
-              <p className="muted small objectives-note">Judged over the final traffic cycle of the run.</p>
-              <ul>
+            <div className="panel goal">
+              <h3 title="Judged over the final traffic cycle of each run">{interview ? 'Targets' : 'Goal'}</h3>
+              <ul className="goal-list">
                 {goals.map((o) => (
                   <li key={o.label} className={o.ok === null ? 'pending' : o.ok ? 'ok' : 'bad'}>
                     <span className="check" key={String(o.ok)} aria-hidden>{o.ok === null ? null : <Icon name={o.ok ? 'check' : 'cross'} size={14} />}</span>
@@ -260,6 +260,16 @@ export function LevelScreen({ id }: { id: string }) {
                   </li>
                 ))}
               </ul>
+              {!sandbox && (hint.length > 0 || g.hintShown < 3) && (
+                <div className="goal-hints">
+                  {hint.map((h, i) => <p key={i} className="small hint">{h}</p>)}
+                  {g.hintShown < 3 && (
+                    <button className="btn quiet small hint-link" onClick={g.useHint} title="Using a hint gives up the Senior engineer star">
+                      {g.hintShown === 0 ? 'Need a hint?' : 'Another hint'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -269,33 +279,19 @@ export function LevelScreen({ id }: { id: string }) {
               <label className="field"><span className="small">Traffic</span>
                 <input type="range" min={0.25} max={4} step={0.25} defaultValue={1} onChange={(e) => g.setSandboxLoad(Number(e.target.value))} aria-label="Traffic multiplier" /></label>
               <div className="chaos-grid">{CHAOS.map((c) => <button key={c.kind} className="btn small chaos-btn" onClick={() => g.fireChaos(c.kind, c.target)}><Icon name="bolt" size={14} /> {c.label}</button>)}</div>
-              <p className="muted small">Press Start, then break things. The sandbox is never scored.</p>
             </div>
           )}
 
-          <div className="panel">
-            <h3>Incidents</h3>
-            {g.timeline.length === 0 && <p className="muted small">Quiet so far.</p>}
-            <ul className="incidents" aria-live="polite">
-              {g.timeline.slice(-6).map((t, i) => (
-                <li key={`${t.tick}-${i}-${t.text}`} className={t.chaos ? 'chaos' : t.resolved ? 'ok' : `sev${t.severity}`}>
-                  <Icon name={t.chaos ? 'bolt' : t.resolved ? 'check' : sevIcon(t.severity)} /> <span className="mono small">t{t.tick}</span> {t.resolved ? `Resolved: ${t.text.replace(/^SEV-\d: /, '')}` : t.text}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {!sandbox && (
-            <div className="panel">
-              <h3>Hints</h3>
-              {hint.map((h, i) => <p key={i} className="small hint">{i + 1}. {h}</p>)}
-              {g.hintShown < 3 && (
-                <>
-                  <button className="btn small" onClick={g.useHint}>{['Show a nudge', 'Show the concept', 'Show the fix'][g.hintShown]}</button>
-                  {g.hintShown === 0 && <p className="muted small hint-note">Using a hint gives up the Senior engineer star.</p>}
-                </>
-              )}
-              <button className="btn quiet small restart-ref" onClick={g.restartFromReference}>Start over from the reference design</button>
+          {g.timeline.length > 0 && (
+            <div className="panel incidents-panel">
+              <h3>Incidents</h3>
+              <ul className="incidents" aria-live="polite">
+                {g.timeline.slice(-4).map((t, i) => (
+                  <li key={`${t.tick}-${i}-${t.text}`} className={t.chaos ? 'chaos' : t.resolved ? 'ok' : `sev${t.severity}`}>
+                    <Icon name={t.chaos ? 'bolt' : t.resolved ? 'check' : sevIcon(t.severity)} /> {t.resolved ? `Resolved: ${t.text.replace(/^SEV-\d: /, '')}` : t.text.replace(/^SEV-\d: /, '')}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </aside>
@@ -339,6 +335,7 @@ export function LevelScreen({ id }: { id: string }) {
               {result.stars.ship && !interview && <button className={`btn${stage === LEVELS.length - 1 ? ' primary' : ''}`} onClick={() => g.go({ name: 'debrief', id })}>See debrief</button>}
               <button className="btn" onClick={g.start}>Run again</button>
               <button className="btn quiet" onClick={() => useGame.setState({ result: null })}>Keep editing</button>
+              {!result.stars.ship && !interview && <button className="btn quiet" onClick={g.restartFromReference}>Start over from the reference design</button>}
             </div>
           </div>
         </div>
