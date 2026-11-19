@@ -6,21 +6,35 @@ async function open(page: Page) {
 }
 const node = (page: Page, label: string) => page.locator(`g.machine[aria-label^="${label}"]`)
 
-test('landing: one Play button, straight into a running sandbox', async ({ page }) => {
-  await open(page)
-  await expect(page.getByRole('heading', { name: /See how systems/ })).toBeVisible()
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
+async function openSandbox(page: Page) {
+  await page.getByRole('button', { name: /open the sandbox/ }).click()
   await expect(page.getByRole('heading', { name: 'Sandbox', exact: true })).toBeVisible()
-  // nothing is locked and there is no lesson or quiz anywhere
-  await expect(page.getByRole('button', { name: 'Add Sharded Database' })).toBeEnabled()
-  await expect(page.getByText(/lesson|quiz|Codex/i)).toHaveCount(0)
+}
+
+test('Play starts the game: welcome, a first run, then one new problem with the design carried over', async ({ page }) => {
+  await open(page)
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Welcome to Friendbook' })).toBeVisible()
+  await page.getByRole('button', { name: 'Start the first day' }).click()
+  await expect(page.getByRole('heading', { name: 'Launch day' })).toBeVisible()
+  await expect(page.getByText('Stage 1 of 11')).toBeVisible()
+  await expect(page.getByText(/sandbox/i)).toHaveCount(0)
+  for (const part of ['Users', 'App Server', 'Database']) await expect(node(page, part)).toBeVisible()
+  await page.getByRole('button', { name: '4×' }).click()
   await page.getByRole('button', { name: 'Start', exact: true }).click()
-  await expect(page.locator('.tile-value').first()).not.toHaveText('–', { timeout: 10_000 })
+  await expect(page.getByText('Stage cleared!')).toBeVisible({ timeout: 60_000 })
+  await page.getByRole('button', { name: /Next problem/ }).click()
+  await expect(page.getByRole('dialog', { name: 'Photos arrive' })).toBeVisible()
+  await page.getByRole('button', { name: "Let's go" }).click()
+  await expect(page.getByText('Stage 2 of 11')).toBeVisible()
+  for (const part of ['Users', 'App Server', 'Database']) await expect(node(page, part)).toBeVisible()
+  await expect(page.locator('g.ghost')).toHaveCount(0) // no outline of the answer
+  await expect(page.getByRole('button', { name: 'Add Object Storage' })).toBeVisible()
 })
 
-test('sandbox: build, break it with chaos, and open a challenge', async ({ page }) => {
+test('sandbox: build, break it with chaos, and open a stage', async ({ page }) => {
   await open(page)
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await openSandbox(page)
   await page.getByRole('button', { name: 'Add Cache' }).click()
   await node(page, 'App Server').click()
   await page.getByRole('button', { name: 'Connect to…' }).click()
@@ -28,9 +42,11 @@ test('sandbox: build, break it with chaos, and open a challenge', async ({ page 
   await page.getByRole('button', { name: 'Start', exact: true }).click()
   await page.getByRole('button', { name: 'Lose a region' }).click()
   await expect(page.getByText('Chaos event: Region outage').first()).toBeVisible({ timeout: 10_000 })
-  await page.getByRole('button', { name: 'Challenges' }).click()
-  await page.getByRole('listitem').filter({ hasText: 'Tutorial' }).getByRole('button', { name: 'Play' }).click()
-  await expect(page.getByRole('heading', { name: /Tutorial/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Stages' }).click()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Photos arrive' }).getByRole('button')).toHaveCount(0) // locked until stage 1 is solved
+  await page.getByRole('listitem').filter({ hasText: 'Launch day' }).getByRole('button', { name: 'Play' }).click()
+  await page.getByRole('button', { name: 'Start the first day' }).click()
+  await expect(page.getByRole('heading', { name: 'Launch day' })).toBeVisible()
 })
 
 async function drag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
@@ -43,7 +59,7 @@ const centre = (b: { x: number; y: number; width: number; height: number }) => (
 
 test('drag and drop: drag a card onto the board, move it, wire it up, delete it', async ({ page }) => {
   await open(page)
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await openSandbox(page)
   const board = (await page.locator('.board svg').boundingBox())!
   const card = (await page.getByRole('button', { name: 'Add Cache' }).boundingBox())!
   // 1. card -> board
@@ -67,14 +83,14 @@ test('drag and drop: drag a card onto the board, move it, wire it up, delete it'
 
 test('dragging a wire onto a part that cannot accept it explains why', async ({ page }) => {
   await open(page)
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await openSandbox(page)
   const port = (await node(page, 'Users').locator('.port circle').last().boundingBox())!
   const db = (await node(page, 'Database').boundingBox())!
   await drag(page, centre(port), centre(db))
   await expect(page.getByText(/Users should never talk to the Database/)).toBeVisible()
 })
 
-test('every challenge can be shipped from its reference design', async ({ page }) => {
+test('every stage can be cleared from its reference design', async ({ page }) => {
   await open(page)
   const ids: string[] = await page.evaluate(() => (window as any).__levels.map((l: { id: string }) => l.id))
   expect(ids).toHaveLength(11)
@@ -82,12 +98,12 @@ test('every challenge can be shipped from its reference design', async ({ page }
     await page.evaluate((id) => {
       const g = (window as any).__game
       const level = (window as any).__levels.find((l: { id: string }) => l.id === id)
-      g.setState({ designs: { ...g.getState().designs, [id]: JSON.parse(JSON.stringify(level.reference)) } })
+      g.setState({ introSeen: (window as any).__levels.map((l: { id: string }) => l.id), designs: { ...g.getState().designs, [id]: JSON.parse(JSON.stringify(level.reference)) } })
       g.getState().enterLevel(id)
     }, id)
     await page.getByRole('button', { name: '4×' }).click()
     await page.getByRole('button', { name: 'Start', exact: true }).click()
-    await expect(page.getByText('Shipped!'), id).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText(/Stage cleared!|Friendbook survived!/), id).toBeVisible({ timeout: 60_000 })
   }
   await page.getByRole('button', { name: 'See debrief' }).click()
   await expect(page.getByText('Replay of your run')).toBeVisible()
@@ -95,7 +111,7 @@ test('every challenge can be shipped from its reference design', async ({ page }
 
 test('keyboard only: build and run with the command palette', async ({ page }) => {
   await open(page)
-  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await openSandbox(page)
   for (const cmd of ['add cache', 'connect app to cache', 'start']) {
     await page.keyboard.press('/')
     await page.getByRole('dialog', { name: 'Command palette' }).waitFor()

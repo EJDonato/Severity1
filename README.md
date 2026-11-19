@@ -2,7 +2,7 @@
 
 A browser game about system design. You build Friendbook, a fictional social network, out of live infrastructure and watch real traffic stress and break it.
 
-Press **Play** and you are in the sandbox: every component unlocked, a small working system on the board, traffic you control, and chaos buttons to break it on purpose. Optional **Challenges** (11 scenarios from a dorm-room site to New Year's Eve, plus an interview mode) give you goals, stars and a debrief.
+Press **Play** and you are welcomed to Friendbook as its only engineer. Stage 1 is just Users, an App Server and a Database. Each of the 11 stages brings one new problem, told as a symptom, and you work out the fix; your design carries over, so it grows from a dorm-room site into a global architecture. Stars, hints and a debrief with a replay come with every stage. The **sandbox** (everything unlocked, chaos buttons, no goals) and an **interview mode** are there too.
 
 - Product: [Severity-1-PRD.md](Severity-1-PRD.md) (see "Direction change") · Architecture: [Severity-1-System-Architecture-PRD.md](Severity-1-System-Architecture-PRD.md) · Design system: [Severity-1-Design-System-PRD.md](Severity-1-Design-System-PRD.md)
 - Context for design work: [PRODUCT.md](PRODUCT.md), [DESIGN.md](DESIGN.md)
@@ -19,7 +19,7 @@ npm run e2e        # Playwright end-to-end tests (uses your installed Chrome)
 
 ## What is built
 
-Landing page with Play, the sandbox, 11 challenge levels and interview mode, all 14 components, a tick-based simulation with incidents, chaos events, SLO judging and star scoring, run replay and side-by-side design comparison in the debrief, a drag-and-drop board (drag parts from the Parts column onto the canvas, drag them around, drag from the blue dot on a part to another part to wire them), a keyboard command palette (press `/`), screen-reader design description, reduced motion, sound (off by default), offline play, and no persistence.
+Landing page with Play, an 11-stage campaign with a welcome and one problem per stage, the sandbox and interview mode, all 14 components, a tick-based simulation with incidents, chaos events, SLO judging and star scoring, run replay and side-by-side design comparison in the debrief, a drag-and-drop board (drag parts from the Parts column onto the canvas, drag them around, drag from the blue dot on a part to another part to wire them), a keyboard command palette (press `/`), screen-reader design description, reduced motion, sound (off by default), offline play, and no persistence.
 
 Removed on purpose: the Academy lessons, quizzes, component locking, test-out, the Codex and the before/after check. See the PRD's "Direction change".
 

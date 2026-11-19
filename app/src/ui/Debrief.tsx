@@ -87,7 +87,7 @@ export function Debrief({ id }: { id: string }) {
       <p>{level.debrief.note}</p>
       <div className="row">
         <button className="btn" onClick={() => g.go({ name: 'level', id })}>Back to the level</button>
-        {next && <button className="btn primary" onClick={() => g.enterLevel(next.id)}>Next challenge: {next.title}</button>}
+        {next && <button className="btn primary" onClick={() => g.enterLevel(next.id)}>Next problem: {next.title}</button>}
         <button className="btn" onClick={() => g.enterLevel('sandbox')}>Back to the sandbox</button>
       </div>
     </div>

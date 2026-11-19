@@ -40,9 +40,14 @@ interface State {
   focusNode: string | null
   pager: Incident | null
   deadline: number | null
+  intro: string | null
+  introSeen: string[]
   chaos: { name: string; tick: number } | null
   go(s: Screen): void
   enterLevel(id: string): void
+  startCampaign(): void
+  nextStage(): void
+  closeIntro(): void
   restartFromReference(): void
   place(type: CType, x?: number, y?: number): void
   move(id: string, x: number, y: number): void
@@ -72,6 +77,8 @@ let runStart: Design | null = null
 let sandboxBase: Level['traffic']['base'] | null = null
 
 export const getSim = () => sim
+// A stage opens once the one before it has been solved.
+export const stageOpen = (i: number, stars: Record<string, Stars>) => i === 0 || !!stars[LEVELS[i - 1]?.id]?.ship
 // Would this wire be allowed? Used to highlight valid targets while dragging a connection.
 export const connectCheck = (from: string, to: string): string | null => {
   const d = useGame.getState().designs[levelId]
@@ -160,7 +167,7 @@ export const useGame = create<State>((set, get) => {
     stars: {}, designs: {}, fromRef: {},
     settings: { speed: 1, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, sound: false },
     snap: null, running: false, runs: 0, hints: 0, hintShown: 0, result: null, timeline: [], lastRun: null, message: '',
-    selected: null, linkFrom: null, selectedEdge: null, focusNode: null, pager: null, chaos: null, deadline: null,
+    selected: null, linkFrom: null, selectedEdge: null, focusNode: null, pager: null, chaos: null, deadline: null, intro: null, introSeen: [],
 
     go: (screen) => {
       if (screen.name !== 'level' && screen.name !== 'debrief') resetRun()
@@ -171,14 +178,32 @@ export const useGame = create<State>((set, get) => {
       levelId = id
       const s = get()
       const l = levelById(id)
-      // Come back to your own design on a level you already touched; otherwise start from the level's start design.
-      const own = s.designs[id]
+      // The game is one growing system: a stage starts from the design that solved the stage before it.
+      // Coming back to a stage you already touched restores your own design for it.
+      const idx = LEVELS.findIndex((x) => x.id === id)
+      const prev = idx > 0 ? LEVELS[idx - 1] : undefined
+      const carried = prev && s.stars[prev.id]?.ship ? s.designs[prev.id] : undefined
+      const own = s.designs[id] ?? carried
       set({
         screen: { name: 'level', id },
+        intro: idx >= 0 && !s.introSeen.includes(id) ? id : null,
         designs: { ...s.designs, [id]: clone(own ?? l.startDesign) },
         runs: 0, hints: 0, hintShown: 0, message: '', selected: null, linkFrom: null,
         deadline: l.interview ? Date.now() + l.interview.minutes * 60000 : null,
       })
+    },
+    startCampaign: () => {
+      const s = get()
+      const next = LEVELS.find((l) => !s.stars[l.id]?.ship) ?? LEVELS[LEVELS.length - 1]
+      get().enterLevel(next.id)
+    },
+    nextStage: () => {
+      const i = LEVELS.findIndex((l) => l.id === levelId)
+      if (i >= 0 && i < LEVELS.length - 1) get().enterLevel(LEVELS[i + 1].id)
+    },
+    closeIntro: () => {
+      const s = get()
+      set({ intro: null, introSeen: s.intro && !s.introSeen.includes(s.intro) ? [...s.introSeen, s.intro] : s.introSeen })
     },
     restartFromReference: () => {
       resetRun()

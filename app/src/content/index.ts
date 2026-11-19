@@ -14,11 +14,9 @@ const rates = (read: number, write: number, photo: number, upload: number, searc
 const design = (nodes: DNode[], edges: [string, string][]): Design => ({ nodes, edges: edges.map(([a, b]) => e(a, b)) })
 
 const d0: Design = { nodes: [], edges: [] }
-const dTutorial = design([node('users'), node('app')], [['users', 'app']])
 const dCh1Start = design([node('users'), node('app'), node('db')], [['users', 'app'], ['app', 'db']])
 const dCh1Ref = design([node('users'), node('app'), node('db'), node('storage')], [['users', 'app'], ['app', 'db'], ['app', 'storage']])
 const dCh2Ref = design([node('users'), node('lb'), node('app', 4), node('db'), node('storage')], [['users', 'lb'], ['lb', 'app'], ['app', 'db'], ['app', 'storage']])
-const dCh3Start = design([node('users'), node('lb'), node('app', 7), node('db'), node('storage')], [['users', 'lb'], ['lb', 'app'], ['app', 'db'], ['app', 'storage']])
 const dCh3Ref = design(
   [node('users'), node('lb'), node('app', 7), node('cache', 1, { cacheSize: 3, expiry: 30 }), node('db'), node('storage')],
   [['users', 'lb'], ['lb', 'app'], ['app', 'cache'], ['app', 'db'], ['cache', 'db'], ['app', 'storage']],
@@ -60,85 +58,86 @@ const regions = { farShare: 0.5, farMs: 300 }
 const slo = { p95Ms: 300, errorRate: 0.01 }
 const lvl = (l: Partial<Level> & Pick<Level, 'id' | 'chapter' | 'title' | 'story' | 'placeable' | 'startDesign' | 'reference' | 'traffic' | 'budget' | 'minDesign' | 'hints' | 'debrief'>): Level => ({ cycles: 2, slo, ...l })
 const T = (base: Rates, fanout = 0) => ({ base, peak: 1.3, cycle: 40, fanout })
-const P1: CType[] = ['users', 'app']
+// Every part is available at every stage. Choosing the right one is the puzzle.
+const ALL: CType[] = ['users', 'dns', 'cdn', 'limiter', 'lb', 'app', 'cache', 'queue', 'worker', 'db', 'shard', 'search', 'storage', 'monitor']
 
 export const LEVELS: Level[] = [
   lvl({
-    id: 'ch0', chapter: 0, title: 'Tutorial: your first request',
-    story: 'Friendbook is a website one student built in a dorm room. Connect the people using it to the server that answers them, then press Start and watch what a request does.',
-    placeable: P1, startDesign: d0, reference: dTutorial,
-    traffic: T(rates(60, 10, 0, 0)), budget: 100, minDesign: ['users', 'app'],
-    hints: ['Look at where the requests are going. Is there a path from users to a server?', 'Every request needs a path from a client to a server.', 'Place Users and an App Server, then connect Users to the App Server.'],
-    debrief: { note: 'Large social networks still begin with this exact shape: clients send requests, servers answer. Everything else in this game exists to keep that exchange fast as it grows.', diffs: { users: 'Source of every request.', app: 'Runs the application logic and answers each request.' } },
+    id: 'ch0', chapter: 0, title: 'Launch day',
+    story: 'Friendbook is live and your first classmates are signing up. Their requests go to your App Server, which keeps profiles in the Database. Press Play and keep everything healthy until the day ends.',
+    placeable: ALL, startDesign: dCh1Start, reference: dCh1Start,
+    traffic: T(rates(60, 10, 0, 0)), budget: 300, minDesign: ['users', 'app', 'db'],
+    hints: ['Press Play and watch the dots: each one is a group of requests travelling through your system.', 'Requests go from Users to the App Server, which reads and writes the Database. The bars under each part show how busy it is.', 'Nothing needs changing yet: let the day run to the end.'],
+    debrief: { note: 'Large social networks still begin with this exact shape: clients send requests, servers answer. Everything else in this game exists to keep that exchange fast as it grows.', diffs: { users: 'Source of every request.', app: 'Runs the application logic and answers each request.', db: 'Keeps profiles and friendships.' } },
   }),
   lvl({
-    id: 'ch1', chapter: 1, title: 'Year one: the dorm-room launch',
-    story: 'Friendbook now stores profiles and friendships in a database, and people are uploading photos. Pages are crawling and the database is choking. Find out why.',
-    placeable: [...P1, 'db', 'storage'], startDesign: dCh1Start, reference: dCh1Ref,
+    id: 'ch1', chapter: 1, title: 'Photos arrive',
+    story: 'Everyone is uploading profile photos, and they all go into the database along with everything else. Pages are crawling. Find what is choking, and fix it.',
+    placeable: ALL, startDesign: dCh1Start, reference: dCh1Ref,
     traffic: T(rates(40, 8, 30, 4)), budget: 450, minDesign: ['db', 'storage'],
     hints: ['Look at what the database is busy with. Is it all profile data?', 'Big files do not belong in a database.', 'Place Object Storage and connect the App Server to it so photos skip the database.'],
     debrief: { note: 'Large social networks keep structured data (profiles, friendships) in databases and put photos and video in object storage, often behind a content delivery network. Databases are built for small, related rows; storage is built for big blobs.', diffs: { storage: 'Photos and uploads go here, so the database only handles profile and friendship data.', db: 'Now handles only reads and writes of structured data.' } },
   }),
   lvl({
     id: 'ch2', chapter: 2, title: 'Every college wants in',
-    story: 'New campuses join every week. One server is overloaded and users see 503 errors. Make Friendbook handle three times the traffic.',
-    placeable: [...P1, 'db', 'storage', 'lb'], startDesign: dCh1Ref, reference: dCh2Ref,
+    story: 'New campuses join every week and traffic has tripled. Users are starting to see errors. There is only so much one machine can do.',
+    placeable: ALL, startDesign: dCh1Ref, reference: dCh2Ref,
     traffic: T(rates(180, 30, 100, 15)), budget: 650, minDesign: ['lb', 'db', 'storage'],
     hints: ['Check the App Server. How full is it, and can one machine ever keep up?', 'Spread requests across several identical servers.', 'Place a Load Balancer between Users and the App Server, then add instances to the App Server.'],
     debrief: { note: 'Large social networks run many identical, stateless app servers behind load balancers, so they can add or lose servers without users noticing. Keeping servers stateless is what makes this possible.', diffs: { lb: 'Spreads requests across servers and skips unhealthy ones.', app: 'Several identical servers share the load; capacity is visible as a stack.' } },
   }),
   lvl({
-    id: 'ch3', chapter: 3, title: 'News Feed launches',
-    story: 'The new News Feed re-reads every friend\'s posts on every refresh. The servers cope, but the database is drowning in reads. Take the pressure off it.',
-    placeable: [...P1, 'db', 'storage', 'lb', 'cache'], startDesign: dCh3Start, reference: dCh3Ref,
+    id: 'ch3', chapter: 3, title: 'The News Feed',
+    story: 'The new News Feed re-reads friends\' posts on every refresh. The database is drowning in the same reads, over and over.',
+    placeable: ALL, startDesign: dCh2Ref, reference: dCh3Ref,
     traffic: T(rates(450, 40, 80, 10)), budget: 900, minDesign: ['cache', 'db', 'storage', 'lb'],
     hints: ['The App Servers are fine. What is the Database busy with?', 'Keep popular data in memory so most reads never reach the database.', 'Place a Cache between the App Server and the Database, connect App to Cache and Cache to Database, and make it a big one in settings.'],
     debrief: { note: 'Large social networks put in-memory caches in front of their databases and serve the bulk of reads from memory, often with replicas behind for the rest. Caches are cheap relative to the database load they remove, but they add a new failure: when a cache is flushed, every request falls through at once.', diffs: { cache: 'Serves most feed reads from memory so the database only sees the misses.', db: 'Now carries only writes and the reads the cache could not answer.' } },
   }),
   lvl({
-    id: 'ch4', chapter: 4, title: 'Photos go global',
-    story: 'Friendbook has gone international. People abroad wait seconds for photos, and the storage service is maxed out serving every image from one place. Bring the content closer to the people.',
-    placeable: [...P1, 'db', 'storage', 'lb', 'cache', 'cdn', 'dns'], startDesign: dCh3Ref, reference: dCh4Ref,
+    id: 'ch4', chapter: 4, title: 'Going global',
+    story: 'Half of your users now live on other continents. For them every page is slow and photos take seconds. Distance itself has become the problem.',
+    placeable: ALL, startDesign: dCh3Ref, reference: dCh4Ref,
     traffic: T(rates(200, 20, 600, 10)), budget: 900, minDesign: ['cdn', 'dns', 'storage'], regions,
     hints: ['Look at Object Storage and at how far half of your users are from it.', 'Serve popular files from edge servers near viewers, and route people to the nearest place.', 'Add a CDN in front of Object Storage for photos, and DNS in front of everything so users are routed to the nearest copy.'],
     debrief: { note: 'Large social networks serve images and video from content delivery networks with edge servers on every continent, and use DNS to steer each user to a nearby, healthy region. The origin storage only sees the small fraction of requests the edge could not answer.', diffs: { cdn: 'Edge servers answer most photo requests near the viewer; only misses reach storage.', dns: 'Routes each user toward the nearest region, cutting the distance every request travels.' } },
   }),
   lvl({
-    id: 'ch5', chapter: 5, title: 'Likes, comments and notifications',
-    story: 'Every post now notifies hundreds of friends. Posting stalls while the server works through the list. Do the slow part later, off the request path.',
-    placeable: [...P1, 'db', 'storage', 'lb', 'cache', 'cdn', 'dns', 'queue', 'worker'], startDesign: dCh4Ref, reference: dCh5Ref,
+    id: 'ch5', chapter: 5, title: 'Notifications',
+    story: 'Every post now notifies hundreds of friends, and posting waits until every notification is sent. Posting has slowed to a crawl.',
+    placeable: ALL, startDesign: dCh4Ref, reference: dCh5Ref,
     traffic: T(rates(200, 60, 400, 10), 8), budget: 1150, minDesign: ['queue', 'worker'], regions,
     hints: ['Notice who is doing the work when someone posts. Does the user need to wait for it?', 'Drop a job on a queue and let workers handle it later.', 'Add a Message Queue and Workers; connect App Server to Queue and Queue to Workers, with enough workers to keep up.'],
     debrief: { note: 'Large social networks do the slow, fan-out work (notifying friends, updating feeds) in background workers fed by message queues. The user\'s request returns immediately; the queue absorbs bursts, and workers catch up. If workers fall behind far enough, the queue overflows and notifications are lost.', diffs: { queue: 'Holds jobs so posting returns immediately.', worker: 'Processes notifications in the background; enough of them keeps the queue short.' } },
   }),
   lvl({
-    id: 'ch6', chapter: 6, title: '"Find your friends"',
-    story: 'People search for each other by name. Every search scans the whole users table and the database cannot keep up. Give search its own system.',
-    placeable: [...P1, 'db', 'storage', 'lb', 'cache', 'cdn', 'dns', 'queue', 'worker', 'search'], startDesign: dCh5Ref, reference: dCh6Ref,
+    id: 'ch6', chapter: 6, title: 'Find your friends',
+    story: 'People search for each other by name, and every search reads the whole users table. The database cannot keep up.',
+    placeable: ALL, startDesign: dCh5Ref, reference: dCh6Ref,
     traffic: T(rates(200, 30, 400, 10, 150), 8), budget: 1400, minDesign: ['search'], regions,
     hints: ['Look at which requests are hitting the Database hardest.', 'An index finds a name without scanning every row.', 'Add a Search Index and connect the App Server to it so searches stop touching the Database.'],
     debrief: { note: 'Large social networks keep a dedicated search index next to the main database and update it from the same stream of changes. Reads from the index are fast, at the cost of the index sometimes lagging a moment behind the truth.', diffs: { search: 'Answers name searches from an index instead of scanning the database.' } },
   }),
   lvl({
     id: 'ch7', chapter: 7, title: '100 million users',
-    story: 'The users and posts tables no longer fit one primary database. Writes are the problem, and replicas cannot help with writes. Split the data.',
-    placeable: [...P1, 'db', 'storage', 'lb', 'cache', 'cdn', 'dns', 'queue', 'worker', 'search', 'shard'], startDesign: dCh6Ref, reference: dCh7Ref,
+    story: 'Writes have outgrown any single database. Copies of it cannot help, because every write still lands in one place.',
+    placeable: ALL, startDesign: dCh6Ref, reference: dCh7Ref,
     traffic: T(rates(400, 200, 400, 20, 200), 2), budget: 2200, minDesign: ['shard'], regions,
     hints: ['Look at the Database: is it reads or writes that fill it? Do replicas help?', 'Split the data across machines by a key, and pick the key carefully.', 'Replace the Database with a Sharded Database, with several shards, and set the shard key to user ID so load spreads evenly.'],
     debrief: { note: 'Large social networks split their biggest tables across many database machines by a key such as user ID, so each machine owns a slice. A poor key creates a hot shard, and celebrity accounts create hot spots even with a good one, which is why they are often handled specially.', diffs: { shard: 'Splits users and posts by user ID so writes spread across machines.' } },
   }),
   lvl({
     id: 'ch8', chapter: 8, title: 'Spam and fake accounts',
-    story: 'Bots are flooding friend requests and posts. They use up capacity that real users need. Block the bots without blocking people.',
-    placeable: [...P1, 'db', 'storage', 'lb', 'cache', 'cdn', 'dns', 'queue', 'worker', 'search', 'shard', 'limiter'], startDesign: dCh7Ref, reference: dCh8Ref,
+    story: 'Bots are flooding friend requests and posts, burning capacity your real users need. Stop them without stopping people.',
+    placeable: ALL, startDesign: dCh7Ref, reference: dCh8Ref,
     traffic: T(rates(400, 200, 400, 20, 200, 500), 2), budget: 2300, minDesign: ['limiter'], regions,
     hints: ['Look at the traffic: some of it is not real people.', 'A limit per user stops floods but a limit that is too strict blocks real people too.', 'Add a Rate Limiter in front of the Load Balancer and set a medium limit: strict limits block real users, lenient ones let bots through.'],
     debrief: { note: 'Large social networks put rate limits and gateways at the edge: per-user and per-address quotas, bursts allowed up to a point. The art is the threshold: too tight blocks real people during a busy moment, too loose lets abuse through.', diffs: { limiter: 'Drops most bot traffic at the door so it never uses app or database capacity.' } },
   }),
   lvl({
-    id: 'ch9', chapter: 9, title: 'Chaos Monkey',
-    story: 'From now on, things break on purpose: servers crash, a whole region goes dark, the cache is wiped. Survive it with no single point of failure, and make sure someone is told.',
-    placeable: [...P1, 'db', 'storage', 'lb', 'cache', 'cdn', 'dns', 'queue', 'worker', 'search', 'shard', 'limiter', 'monitor'], startDesign: dCh8Ref, reference: dCh9Ref,
+    id: 'ch9', chapter: 9, title: 'Things break',
+    story: 'From now on machines crash, a region goes dark and the cache gets wiped, on purpose. Stay up through all of it, and make sure someone is told.',
+    placeable: ALL, startDesign: dCh8Ref, reference: dCh9Ref,
     traffic: T(rates(250, 100, 400, 10, 100, 100), 2), budget: 2500, minDesign: ['monitor'], regions,
     chaos: [
       { tick: 48, kind: 'crash', target: 'app', duration: 10 },
@@ -152,7 +151,7 @@ export const LEVELS: Level[] = [
   lvl({
     id: 'boss', chapter: 10, title: 'New Year\'s Eve at midnight',
     story: 'Midnight. Everyone in the world posts at once. A traffic spike, a crashed server, a bot attack, a flushed cache and a lost region all arrive in the same ten minutes. Use everything you have learned.',
-    placeable: [...P1, 'db', 'storage', 'lb', 'cache', 'cdn', 'dns', 'queue', 'worker', 'search', 'shard', 'limiter', 'monitor'], startDesign: dCh9Ref, reference: dBossRef,
+    placeable: ALL, startDesign: dCh9Ref, reference: dBossRef,
     traffic: { base: rates(350, 150, 500, 15, 150, 120), peak: 1.4, cycle: 40, fanout: 2 }, budget: 3600, minDesign: ['limiter', 'shard', 'monitor', 'cdn', 'queue', 'cache', 'search', 'lb'], regions,
     slo: { p95Ms: 280, errorRate: 0.008 },
     chaos: [
@@ -166,6 +165,24 @@ export const LEVELS: Level[] = [
     debrief: { note: 'Real launches and big events are rehearsed exactly like this: load tests at multiples of expected peak, with failures injected on purpose, so the first time everything goes wrong is not the real time.', diffs: { app: 'Sized for the spike and a lost region.', shard: 'More shards keep the busiest shard under capacity.', worker: 'Enough workers that the queue never spills.' } },
   }),
 ]
+
+// What each part does, in plain words. Shown on hover in the hotbar and in the inspector.
+export const PART_INFO: Record<CType, string> = {
+  users: 'Your users. Every request starts here.',
+  dns: 'Points each user to the nearest copy of your system.',
+  cdn: 'Edge servers that keep popular files, like photos, close to the people viewing them.',
+  limiter: 'Turns away abusive traffic before it reaches your servers.',
+  lb: 'Spreads requests across several App Servers, so you can run more than one.',
+  app: 'Runs Friendbook and answers requests. Add instances behind a Load Balancer to handle more.',
+  cache: 'Fast memory that answers repeated reads without asking the database.',
+  queue: 'Holds slow jobs so users do not have to wait for them.',
+  worker: 'Takes jobs off the queue and does them in the background.',
+  db: 'Stores profiles, posts and friendships. Read replicas share the reading, not the writing.',
+  shard: 'A database split across machines by a key, so writes spread out.',
+  search: 'Finds people by name without reading the whole database.',
+  storage: 'Stores big files like photos and videos.',
+  monitor: 'Watches everything and alerts you fast when something breaks.',
+}
 
 // Sandbox (FR-20): everything unlocked, custom traffic and chaos. Never scored.
 export const SANDBOX_LEVEL: Level = lvl({

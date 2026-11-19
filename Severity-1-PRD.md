@@ -28,6 +28,8 @@ What this replaces in the sections below:
 
 **No analytics or consent notice for now (FR-23 deferred).** There is no collection endpoint, so a consent banner would ask permission to collect data nobody receives. The analytics code and notice were removed; if analytics is added later, it comes back together with a real endpoint.
 
+**Update (same day): Play starts the main game, one problem at a time.** Play no longer opens the sandbox. It opens the campaign: a welcome screen introduces Friendbook and the player as its only engineer, and Stage 1 starts with Users, an App Server and a Database already running. Each of the 11 stages introduces exactly one new problem, told only as a symptom (photos choking the database, one server overloaded, feed reads flooding the database, distant users, slow notifications, search, write overload, bots, failures, then New Year's Eve). The player's design carries over from stage to stage, so the system grows into a full architecture. Every part is available at every stage with a plain description; no outline, objective or failure message names the fix, and hints are opt-in. A stage opens once the one before it is solved. The sandbox and interview mode remain as secondary modes. A content test enforces the one-problem rule: carrying in the previous stage's solution must not clear the next stage.
+
 The simulation, components, chaos, scoring, replay and accessibility requirements are unchanged. Where the sections below describe lessons, the Codex or locking, this note takes precedence.
 
 ## Goals, non-goals and success metrics

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { MachineIcon } from '../board/Board'
+import { PART_INFO } from '../content'
 import { PARAMS } from '../schema'
 import type { CType } from '../schema'
 
@@ -36,7 +37,7 @@ export function PartsPalette({ types, onAdd, onDrop }: { types: CType[]; onAdd: 
       <div className="parts" role="toolbar" aria-label="Parts">
         {types.map((t) => (
           <button key={t} className="part" onPointerDown={(e) => start(e, t)} onClick={(e) => { if (e.detail === 0) onAdd(t) }}
-            aria-label={`Add ${PARAMS[t].label}`} title={`${PARAMS[t].label} · ${PARAMS[t].cost ? `$${PARAMS[t].cost}/mo` : 'free'}. Drag onto the board, or press Enter to add.`}>
+            aria-label={`Add ${PARAMS[t].label}`} title={`${PARAMS[t].label} · ${PARAMS[t].cost ? `$${PARAMS[t].cost}/mo` : 'free'}\n${PART_INFO[t]}`}>
             <span className="part-logo"><MachineIcon type={t} size={38} /></span>
             <span className="part-name">{PARAMS[t].label}</span>
           </button>

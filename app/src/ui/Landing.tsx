@@ -55,8 +55,9 @@ export function Landing() {
         <h1><span className="rise" style={{ animationDelay: '60ms' }}>See how systems</span><br /><span className="rise" style={{ animationDelay: '150ms' }}>really work.</span></h1>
         <p className="lede rise" style={{ animationDelay: '260ms' }}>Build a social network from a dorm-room site into a global platform, and watch real traffic push it until it breaks.</p>
         <div className="row center rise" style={{ animationDelay: '360ms' }}>
-          <button className="btn primary huge cta" onClick={() => g.enterLevel('sandbox')}><Icon name="play" size={20} filled /> Play</button>
+          <button className="btn primary huge cta" onClick={g.startCampaign}><Icon name="play" size={20} filled /> Play</button>
         </div>
+        <button className="btn quiet rise" style={{ animationDelay: '420ms' }} onClick={() => g.enterLevel('sandbox')}>Or open the sandbox: everything unlocked, no goals</button>
         <p className="muted small rise" style={{ animationDelay: '440ms' }}>Free, in your browser. Nothing is saved; each visit starts fresh.</p>
       </section>
       <Demo />

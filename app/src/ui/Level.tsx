@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Board, clientToCell } from '../board/Board'
-import { levelById } from '../content'
+import { LEVELS, PART_INFO, levelById } from '../content'
 import { ALL_TYPES, PARAMS, costOf } from '../schema'
 import type { CType, ChaosKind, DNode, Design, NodeConfig } from '../schema'
 import { SPEEDS, connectCheck, useGame } from '../session/store'
@@ -10,6 +10,7 @@ import { Challenges } from './Challenges'
 import { Chip } from './Hud'
 import { PartsPalette } from './PartsPalette'
 import { Palette } from './Palette'
+import { StageIntro } from './StageIntro'
 
 const total = (d: Design) => d.nodes.reduce((s, n) => s + costOf(n), 0)
 const CAN_CONNECT: CType[] = ['users', 'dns', 'limiter', 'lb', 'app', 'cache', 'cdn', 'queue']
@@ -80,6 +81,7 @@ export function LevelScreen({ id }: { id: string }) {
   }, [interview])
   const left = g.deadline ? Math.max(0, Math.round((g.deadline - now) / 1000)) : null
   const [picking, setPicking] = useState(false)
+  useEffect(() => { window.scrollTo(0, 0) }, [id])
   const boardRef = useRef<HTMLDivElement>(null)
   // A part dropped from the palette lands centred on the pointer.
   const onDrop = (type: CType, cx: number, cy: number) => {
@@ -113,7 +115,9 @@ export function LevelScreen({ id }: { id: string }) {
     addEventListener('keydown', on)
     return () => removeEventListener('keydown', on)
   }, [])
-  const ghosts = useMemo(() => (sandbox ? [] : level.reference.nodes.filter((n) => !design.nodes.some((x) => x.id === n.id) && level.placeable.includes(n.type))), [design, level, sandbox])
+  // No outlines of the answer: the player works out which part solves the problem.
+  const ghosts: DNode[] = []
+  const stage = LEVELS.findIndex((l) => l.id === id)
   const sel = design.nodes.find((n) => n.id === g.selected)
   const selState = sel ? snap?.nodes[sel.id] : undefined
   const m = snap?.metrics
@@ -124,12 +128,10 @@ export function LevelScreen({ id }: { id: string }) {
   const chaosNow = g.chaos && snap && snap.tick - g.chaos.tick < 8 ? g.chaos : null
   const ticks = level.traffic.cycle * level.cycles
   const cost = m ? m.cost : total(design)
-  const present = new Set(design.nodes.map((n) => n.type))
   const goals = level.sandbox ? [] : [
     { label: `p95 under ${level.slo.p95Ms} ms`, ok: m ? m.p95 <= level.slo.p95Ms : null },
     { label: `Errors under ${(level.slo.errorRate * 100).toFixed(1)}%`, ok: m ? m.errorRate <= level.slo.errorRate : null },
     { label: `Under $${level.budget}/mo`, ok: cost <= level.budget },
-    ...(interview ? [] : level.minDesign.map((t) => ({ label: `Includes ${PARAMS[t].label}`, ok: present.has(t) }))),
   ]
   const score = result?.rubric ? Math.round((result.rubric.filter((r) => r.pass).length / Math.max(1, result.rubric.length)) * 100) : 0
   const playLabel = ended ? (snap ? 'Run again' : 'Start') : g.running ? 'Pause' : 'Resume'
@@ -143,7 +145,8 @@ export function LevelScreen({ id }: { id: string }) {
           <h2>{level.title}</h2>
           <p className="muted">{level.story}</p>
         </div>
-        <button className="btn challenges-btn" onClick={() => setPicking(true)}>Challenges</button>
+        {stage >= 0 && <span className="stage-pill">Stage {stage + 1} of {LEVELS.length}</span>}
+        <button className="btn challenges-btn" onClick={() => setPicking(true)}>Stages</button>
       </header>
 
       <div className="game">
@@ -214,6 +217,7 @@ export function LevelScreen({ id }: { id: string }) {
                   <h3>{PARAMS[sel.type].label}</h3>
                   {selState && sel.type !== 'users' && <span className={`pill h-${selState.health}`}>{selState.health}</span>}
                 </div>
+                <p className="small part-info">{PART_INFO[sel.type]}</p>
                 {selState && sel.type !== 'users' && (
                   <div className="gauge" aria-label={`${Math.round(selState.util * 100)} percent used`}>
                     <span className={`h-${selState.health}`} style={{ transform: `scaleX(${Math.min(1, selState.util)})` }} />
@@ -245,7 +249,8 @@ export function LevelScreen({ id }: { id: string }) {
 
           {goals.length > 0 && (
             <div className="panel objectives">
-              <h3>{interview ? 'Targets' : 'Objectives'}</h3>
+              <div className="row between objectives-head"><h3>{interview ? 'Targets' : 'Objectives'}</h3><span className="muted small">{snap ? 'live' : 'press Start'}</span></div>
+              <p className="muted small objectives-note">Judged over the final traffic cycle of the run.</p>
               <ul>
                 {goals.map((o) => (
                   <li key={o.label} className={o.ok === null ? 'pending' : o.ok ? 'ok' : 'bad'}>
@@ -304,11 +309,12 @@ export function LevelScreen({ id }: { id: string }) {
       </section>
       <Palette />
       {picking && <Challenges onClose={() => setPicking(false)} />}
+      {g.intro === id && <StageIntro level={level} index={stage} onStart={g.closeIntro} />}
 
       {result && !level.sandbox && (
         <div className="modal-back">
           <div className={`modal result ${result.stars.ship || interview ? 'ship' : 'fail'}`} role="dialog" aria-modal="true" aria-label="Run result">
-            <h2>{interview ? `Interview score: ${score}/100` : result.stars.ship ? 'Shipped!' : 'Not there yet'}</h2>
+            <h2>{interview ? `Interview score: ${score}/100` : result.stars.ship ? (stage === LEVELS.length - 1 ? 'Friendbook survived!' : 'Stage cleared!') : 'Not there yet'}</h2>
             {!interview && (
               <div className="star-row" aria-label="Stars earned">
                 {([['ship', 'Ship it'], ['thrifty', 'Thrifty'], ['senior', 'Senior engineer']] as const).map(([k, label], i) => (
@@ -323,12 +329,13 @@ export function LevelScreen({ id }: { id: string }) {
             {result.rubric && <ul className="slos">{result.rubric.map((r) => <li key={r.label} className={r.pass ? 'ok' : 'bad'}><Icon name={r.pass ? 'check' : 'cross'} /> {r.label}</li>)}</ul>}
             <ul className="slos">
               {result.slos.map((s) => <li key={s.name} className={s.pass ? 'ok' : 'bad'}><Icon name={s.pass ? 'check' : 'cross'} /> {s.name}: {s.measured} <span className="muted">({s.target})</span></li>)}
-              {result.missing.length > 0 && <li className="bad"><Icon name="cross" /> Design is missing: {result.missing.map((t) => PARAMS[t].label).join(', ')}</li>}
+              {result.missing.length > 0 && result.slos.every((x) => x.pass) && <li className="bad"><Icon name="cross" /> The numbers held, but brute force will not last: this stage's problem has a better fix. A hint can point the way.</li>}
               <li className={result.cost <= level.budget ? 'ok' : 'bad'}><Icon name={result.cost <= level.budget ? 'check' : 'cross'} /> Cost ${result.cost}/mo <span className="muted">(budget ${level.budget})</span></li>
             </ul>
             {result.stars.fromReference && <p className="muted small">Stars from a reference start are marked as such.</p>}
             <div className="row">
-              {result.stars.ship && !interview && <button className="btn primary" onClick={() => g.go({ name: 'debrief', id })}>See debrief</button>}
+              {result.stars.ship && !interview && stage >= 0 && stage < LEVELS.length - 1 && <button className="btn primary" onClick={g.nextStage}>Next problem <Icon name="next" size={16} /></button>}
+              {result.stars.ship && !interview && <button className={`btn${stage === LEVELS.length - 1 ? ' primary' : ''}`} onClick={() => g.go({ name: 'debrief', id })}>See debrief</button>}
               <button className="btn" onClick={g.start}>Run again</button>
               <button className="btn quiet" onClick={() => useGame.setState({ result: null })}>Keep editing</button>
             </div>

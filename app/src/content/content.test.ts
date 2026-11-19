@@ -42,9 +42,18 @@ describe('solvability', () => {
       expect(e.slos.every((s) => s.pass), JSON.stringify(e.slos)).toBe(true)
       expect(e.thrifty, `cost ${e.cost} vs budget ${l.budget}`).toBe(true)
     })
-    it(`${l.id}: the starting design does not ship`, () => {
-      expect(evalOf(l, l.startDesign).ship).toBe(false)
-    })
+    const i = LEVELS.indexOf(l)
+    if (i === 0) {
+      it(`${l.id}: the first stage is a first run that works as given`, () => {
+        expect(evalOf(l, l.startDesign).ship).toBe(true)
+      })
+    } else {
+      // One new problem per stage: the solution you carry in from the last stage must not already solve this one.
+      it(`${l.id}: carrying in the previous stage's solution does not ship`, () => {
+        expect(evalOf(l, LEVELS[i - 1].reference).ship).toBe(false)
+        expect(evalOf(l, l.startDesign).ship).toBe(false)
+      })
+    }
   }
   it('adding instances alone cannot pass the middle chapters (the minimum design is missing)', () => {
     for (const id of ['ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8']) {
