@@ -4,7 +4,7 @@ import type { CType, DNode, Design, Level, NodeConfig, Rates } from '../schema'
 
 // Candidate grid slots per component, in cells. The first free one is used when the player places a part.
 // How many App Servers and Workers each stage's solution runs (tuned so each stage clears with headroom).
-const APPS = { ch3: 4, ch4: 2, ch5: 2, ch6: 3, ch7: 5, ch8: 5, ch9: 4, boss: 7 }
+const APPS = { ch3: 2, ch4: 2, ch5: 2, ch6: 3, ch7: 3, ch8: 3, ch9: 4, boss: 7 }
 const WORKERS = { ch5: 3, boss: 4 }
 
 // Board layout, in cells. Repeatable parts (App Servers, Workers, Load Balancers) have several slots.
@@ -109,15 +109,15 @@ export const LEVELS: Level[] = [
     id: 'ch3', chapter: 3, title: 'The News Feed',
     story: 'The new News Feed re-reads friends\' posts on every refresh. The database is drowning in the same reads, over and over.',
     placeable: ALL, startDesign: dCh2Ref, reference: dCh3Ref,
-    traffic: T(rates(520, 40, 80, 10)), budget: 1000, minDesign: ['cache', 'db', 'storage', 'lb'],
-    hints: ['The App Servers are fine. What is the Database busy with?', 'Keep popular data in memory so most reads never reach the database.', 'Place a Cache between the App Server and the Database, connect App to Cache and Cache to Database, and make it a big one in settings.'],
+    traffic: T(rates(300, 40, 25, 4)), budget: 1000, minDesign: ['cache', 'db', 'storage', 'lb'],
+    hints: ['The App Servers are fine. What is the Database busy with?', 'Keep popular data in memory so most reads never reach the database.', 'Place a Cache between the App Servers and the Database: connect each App Server to the Cache, and the Cache to the Database. A bigger cache catches more.'],
     debrief: { note: 'Large social networks put in-memory caches in front of their databases and serve the bulk of reads from memory, often with replicas behind for the rest. Caches are cheap relative to the database load they remove, but they add a new failure: when a cache is flushed, every request falls through at once.', diffs: { cache: 'Serves most feed reads from memory so the database only sees the misses.', db: 'Now carries only writes and the reads the cache could not answer.' } },
   }),
   lvl({
     id: 'ch4', chapter: 4, title: 'Going global',
     story: 'Half of your users now live on other continents. For them every page is slow and photos take seconds. Distance itself has become the problem.',
     placeable: ALL, startDesign: dCh3Ref, reference: dCh4Ref,
-    traffic: T(rates(200, 20, 600, 10)), budget: 900, minDesign: ['cdn', 'dns', 'storage'], regions,
+    traffic: T(rates(160, 20, 200, 10)), budget: 900, minDesign: ['cdn', 'dns', 'storage'], regions,
     hints: ['Look at Object Storage and at how far half of your users are from it.', 'Serve popular files from edge servers near viewers, and route people to the nearest place.', 'Add a CDN in front of Object Storage for photos, and DNS in front of everything so users are routed to the nearest copy.'],
     debrief: { note: 'Large social networks serve images and video from content delivery networks with edge servers on every continent, and use DNS to steer each user to a nearby, healthy region. The origin storage only sees the small fraction of requests the edge could not answer.', diffs: { cdn: 'Edge servers answer most photo requests near the viewer; only misses reach storage.', dns: 'Routes each user toward the nearest region, cutting the distance every request travels.' } },
   }),
@@ -141,7 +141,7 @@ export const LEVELS: Level[] = [
     id: 'ch7', chapter: 7, title: '100 million users',
     story: 'Writes have outgrown any single database. Copies of it cannot help, because every write still lands in one place.',
     placeable: ALL, startDesign: dCh6Ref, reference: dCh7Ref,
-    traffic: T(rates(400, 200, 400, 20, 200), 2), budget: 2400, minDesign: ['shard'], regions,
+    traffic: T(rates(200, 170, 400, 15, 120), 2), budget: 2400, minDesign: ['shard'], regions,
     hints: ['Look at the Database: is it reads or writes that fill it? Do replicas help?', 'Split the data across machines by a key, and pick the key carefully.', 'Replace the Database with a Sharded Database, with several shards, and set the shard key to user ID so load spreads evenly.'],
     debrief: { note: 'Large social networks split their biggest tables across many database machines by a key such as user ID, so each machine owns a slice. A poor key creates a hot shard, and celebrity accounts create hot spots even with a good one, which is why they are often handled specially.', diffs: { shard: 'Splits users and posts by user ID so writes spread across machines.' } },
   }),
@@ -149,7 +149,7 @@ export const LEVELS: Level[] = [
     id: 'ch8', chapter: 8, title: 'Spam and fake accounts',
     story: 'Bots are flooding friend requests and posts, burning capacity your real users need. Stop them without stopping people.',
     placeable: ALL, startDesign: dCh7Ref, reference: dCh8Ref,
-    traffic: T(rates(400, 200, 400, 20, 200, 500), 2), budget: 2500, minDesign: ['limiter'], regions,
+    traffic: T(rates(200, 170, 400, 15, 120, 300), 2), budget: 2500, minDesign: ['limiter'], regions,
     hints: ['Look at the traffic: some of it is not real people.', 'A limit per user stops floods but a limit that is too strict blocks real people too.', 'Add a Rate Limiter in front of the Load Balancer and set a medium limit: strict limits block real users, lenient ones let bots through.'],
     debrief: { note: 'Large social networks put rate limits and gateways at the edge: per-user and per-address quotas, bursts allowed up to a point. The art is the threshold: too tight blocks real people during a busy moment, too loose lets abuse through.', diffs: { limiter: 'Drops most bot traffic at the door so it never uses app or database capacity.' } },
   }),

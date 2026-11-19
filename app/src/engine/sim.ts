@@ -291,7 +291,7 @@ export class Sim {
       }
       if (n.type === 'shard') {
         // The busiest shard sets the pace: hashing by user spreads load, a poor key leaves a hot shard.
-        const share = n.config?.shardKey === 'region' ? 0.75 : Math.min(1, 1.25 / Math.max(1, e))
+        const share = n.config?.shardKey === 'region' ? 0.9 : Math.min(1, 1.25 / Math.max(1, e))
         work *= share
         capEff = e === 0 ? 0 : p.cap
       }

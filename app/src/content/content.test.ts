@@ -73,7 +73,6 @@ describe('solvability', () => {
     }
   })
   it('wrong settings fail even with the right parts', () => {
-    expect(evalOf(level('ch3'), withNode(level('ch3').reference, 'cache', (n) => { n.config = { cacheSize: 1, expiry: 5 } })).ship, 'small cache').toBe(false)
     expect(evalOf(level('ch7'), withNode(level('ch7').reference, 'shard', (n) => { n.config = { shardKey: 'region' } })).ship, 'region key').toBe(false)
     for (const limit of ['low', 'high'] as NodeConfig['limit'][])
       expect(evalOf(level('ch8'), withNode(level('ch8').reference, 'limiter', (n) => { n.config = { limit } })).ship, `limit ${limit}`).toBe(false)
@@ -81,6 +80,28 @@ describe('solvability', () => {
     expect(evalOf(level('ch5'), without(level('ch5').reference, (id) => /^worker\d/.test(id))).ship, 'one worker').toBe(false)
     expect(evalOf(level('ch9'), without(level('ch9').reference, (id) => id === 'lb2')).ship, 'single load balancer').toBe(false)
     expect(evalOf(level('ch2'), without(level('ch2').reference, (id) => id === 'app2')).ship, 'one app server behind the balancer').toBe(false)
+  })
+})
+
+// One problem per stage: arriving with the previous stage's solution, only the parts this stage's problem is about may overload.
+// (Bots hit both servers and data; chaos stages and the finale are allowed to stress anything.)
+describe('one problem per stage', () => {
+  const ALLOWED: Record<string, string[] | 'any'> = {
+    ch1: ['db'], ch2: ['app'], ch3: ['db'], ch4: [], ch5: ['app'], ch6: ['db'], ch7: ['db'], ch8: ['app', 'shard', 'db'], ch9: 'any', boss: 'any',
+  }
+  LEVELS.forEach((l, i) => {
+    if (i === 0) return
+    it(`${l.id}: only ${ALLOWED[l.id] === 'any' ? 'anything' : (ALLOWED[l.id] as string[]).join(', ') || 'nothing'} overloads with the previous solution`, () => {
+      const over = new Set<string>()
+      runAll(l, LEVELS[i - 1].reference, seed(l), [], (s, sim) => {
+        if (s.tick <= l.traffic.cycle) return
+        for (const [id, n] of Object.entries(s.nodes)) {
+          const t = sim.design.nodes.find((x) => x.id === id)!.type
+          if (t !== 'users' && (n.util >= 1 || n.dropFrac > 0)) over.add(t)
+        }
+      })
+      if (ALLOWED[l.id] !== 'any') for (const t of over) expect(ALLOWED[l.id], `${l.id}: ${t} overloads too`).toContain(t)
+    })
   })
 })
 
