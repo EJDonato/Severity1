@@ -93,7 +93,21 @@ System font stack only (SF on Apple devices, Helvetica/Arial elsewhere). Display
 
 ## Layout
 
-Centered, max width 1320. The landing page is a single centered hero (headline, lede, one Play button) over a live demo board. The level screen is three columns (196px parts, flexible board, 304px run and metrics); at 1100px the parts become a full-width grid above a two-column board and rail; at 760px everything stacks and a note says the board needs a bigger screen. Generous vertical rhythm: 56 to 72px between hero blocks.
+Centered, max width 1440. The landing page is a single centered hero (88px headline, lede, one Play button) over a live demo board with a status pill and a "Try breaking it" button. The game screen is three columns: a 104px hotbar of parts, the arena (heads-up display row with the run controls on the left and live metric chips on the right, the board, and a footer strip that shows the how-to line or the current alert), and a 300px rail (inspector, objectives or break-it controls, incidents, hints). At 1180px the rail moves under the arena as a wrapping grid; at 760px everything stacks and a note says the board needs a bigger screen.
+
+## Motion and feel
+
+Game feel, in the system's quiet register. Easing tokens: `--out` cubic-bezier(0.16, 1, 0.3, 1) for entrances, `--in` for exits, `--spring` cubic-bezier(0.34, 1.56, 0.64, 1) for anything pressed or placed.
+
+- Press: buttons and parts squash to 0.94–0.95 in 80ms, then spring back.
+- Place: parts pop in from 0.55 with a spring; on first load they arrive staggered 55ms apart. Removed parts shrink out in 240ms.
+- Wire: new connections draw themselves on (stroke-dashoffset, 560ms).
+- Refuse: a wire dropped on a part that cannot accept it shakes the target and the reason line.
+- State: status badges pop when health changes; metric chips glide to new values (280ms ease-out) and nudge when they cross a target; objective checks pop green or shake red.
+- Chaos: the arena jolts once (480ms) and flashes; a banner drops in at the top of the board.
+- Result: the dialog springs up; earned stars spin in one after another with a small burst; a failed run shakes once.
+- Feedback: `audio/feedback.ts` fires a short sound and vibration per moment behind the single Sound switch, off by default. Every cue has a visual twin.
+- Reduced motion (setting or OS preference) removes all movement and keeps the colour, shape and text feedback.
 
 ## Elevation & Depth
 
@@ -107,8 +121,11 @@ Large radii: 16 tiles, 22 panels, 26 cards and board, 980 pill buttons and chips
 
 - **Machine:** white rounded tile, ink line art, a status badge (check circle, triangle, octagon, flame, crossed square), a thin utilization bar along the bottom, a ring in the state colour when not healthy.
 - **Buttons:** pill. Primary blue, default light grey, quiet blue text link.
-- **Alert (pager):** floating frosted card at the bottom right with a severity icon; SEV-2 and SEV-3 step aside after 8 seconds, SEV-1 waits to be dismissed; hidden while a result dialog is open.
-- **Parts palette:** a column of white cards (logo tile, name, monthly cost) on the grey surface; drag a card onto the board, or click it to add at the next free spot. Becomes a wrapping grid above the board below 1100px.
+- **Alert (pager):** replaces the how-to line in the strip under the board, so it never covers a part; severity icon, one line, Go to and dismiss. SEV-1 adds a red outline and waits to be dismissed; SEV-2 and SEV-3 step aside after 8 seconds.
+- **Heads-up display:** a pill Play/Pause button (blue when idle, ink when running), a restart button, a segmented speed control, a run-progress bar, and white metric chips.
+- **Inspector:** part name with a health pill, a load gauge, steppers with round buttons, and settings; an empty state when nothing is selected.
+- **Objectives:** a live checklist of the challenge's targets with round check marks.
+- **Hotbar:** a narrow column of square white tiles (drawing and name; cost in the tooltip) on the grey surface; drag one onto the board, or click to add it at the next free spot.
 - **Board editing:** parts drag freely on a fixed canvas (half-cell snap); a blue handle on a part's right edge drags a wire; valid targets get an accent ring, others dim to 40%.
 - **How-to line:** four short inline hints under the board with a blue-dot glyph and keycaps, shown when nothing is selected.
 - **Metric tile:** white card, large number, small label; turns soft orange with a warning icon when over target.

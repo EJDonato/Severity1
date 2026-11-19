@@ -36,10 +36,9 @@ export function PartsPalette({ types, onAdd, onDrop }: { types: CType[]; onAdd: 
       <div className="parts" role="toolbar" aria-label="Parts">
         {types.map((t) => (
           <button key={t} className="part" onPointerDown={(e) => start(e, t)} onClick={(e) => { if (e.detail === 0) onAdd(t) }}
-            aria-label={`Add ${PARAMS[t].label}`} title={`${PARAMS[t].label}: drag onto the board, or press Enter to add`}>
-            <span className="part-logo"><MachineIcon type={t} size={40} /></span>
+            aria-label={`Add ${PARAMS[t].label}`} title={`${PARAMS[t].label} · ${PARAMS[t].cost ? `$${PARAMS[t].cost}/mo` : 'free'}. Drag onto the board, or press Enter to add.`}>
+            <span className="part-logo"><MachineIcon type={t} size={38} /></span>
             <span className="part-name">{PARAMS[t].label}</span>
-            <span className="part-cost muted small">{PARAMS[t].cost ? `$${PARAMS[t].cost}/mo` : 'free'}</span>
           </button>
         ))}
       </div>

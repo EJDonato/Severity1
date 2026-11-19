@@ -56,14 +56,14 @@ export function MachineIcon({ type, size = 48 }: { type: CType; size?: number })
 function Badge({ health, x, y }: { health: Health; x: number; y: number }) {
   const c = HEALTH_COLOR[health]
   return (
-    <g transform={`translate(${x},${y})`} aria-hidden>
+    <g transform={`translate(${x},${y})`} aria-hidden><g className="badge">
       <circle r={12} fill={color.bg1} stroke={color.borderSubtle} strokeWidth={1.5} />
       {health === 'healthy' && <><circle r={8} fill={c} stroke={color.ink} strokeWidth={1.5} /><path d="M-4 0l3 3 5-6" stroke={color.ink} strokeWidth={2.2} fill="none" /></>}
       {health === 'strained' && <><path d="M0-8L8 7H-8Z" fill={c} stroke={color.ink} strokeWidth={1.5} strokeLinejoin="round" /><path d="M0-3v5M0 4v1" stroke={color.ink} strokeWidth={2} /></>}
       {health === 'overloaded' && <><path d="M-3-8h6l5 5v6l-5 5h-6l-5-5v-6z" fill={c} stroke={color.ink} strokeWidth={1.5} /><path d="M0-4v5M0 4v1" stroke={color.ink} strokeWidth={2} /></>}
       {health === 'failing' && <path d="M0-9C3-4 7-2 7 3a7 7 0 0 1-14 0c0-3 2-4 3-6 1 2 2 2 2 0 0-2 1-4 2-6z" fill={c} stroke={color.ink} strokeWidth={1.5} />}
       {health === 'down' && <><rect x={-7} y={-7} width={14} height={14} fill={color.bg0} stroke={color.ink} strokeWidth={1.5} /><path d="M-4-4l8 8M4-4l-8 8" stroke={color.ink} strokeWidth={2} /></>}
-    </g>
+    </g></g>
   )
 }
 
@@ -137,6 +137,23 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
   const svgRef = useRef<SVGSVGElement>(null)
   const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null)
   const [link, setLink] = useState<{ from: string; x: number; y: number } | null>(null)
+  // Game feel: parts pop in (staggered on first load), shrink out when removed, and shake when a wire is refused.
+  const delays = useRef(new Map<string, number>())
+  const mounted = useRef(false)
+  useEffect(() => { mounted.current = true }, [])
+  design.nodes.forEach((n, i) => { if (!delays.current.has(n.id)) delays.current.set(n.id, mounted.current ? 0 : 60 + i * 55) })
+  const prevNodes = useRef(design.nodes)
+  const [leaving, setLeaving] = useState<DNode[]>([])
+  useEffect(() => {
+    const gone = prevNodes.current.filter((p) => !design.nodes.some((n) => n.id === p.id))
+    prevNodes.current = design.nodes
+    if (!gone.length) return
+    for (const n of gone) delays.current.delete(n.id)
+    setLeaving((l) => [...l, ...gone])
+    const t = setTimeout(() => setLeaving((l) => l.filter((x) => !gone.includes(x))), 260)
+    return () => clearTimeout(t)
+  }, [design.nodes])
+  const [shake, setShake] = useState<string | null>(null)
   // While a part is being dragged, the board shows it (and its wires) at the pointer without touching the design.
   const view = useMemo<Design>(() => (drag ? { ...design, nodes: design.nodes.map((n) => (n.id === drag.id ? { ...n, x: drag.x, y: drag.y } : n)) } : design), [design, drag])
   const all = [...view.nodes, ...ghosts]
@@ -216,7 +233,9 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
           const q = px(t)
           return t.id !== n.id && mx >= q.x - 10 && mx <= q.x + q.w + 10 && my >= q.y - 10 && my <= q.y + q.h + 24
         })
-        if (hit) onConnect?.(n.id, hit.id)
+        if (!hit) return
+        if (canConnect?.(n.id, hit.id)) { setShake(hit.id); setTimeout(() => setShake(null), 420) }
+        onConnect?.(n.id, hit.id)
       },
     )
   }
@@ -244,7 +263,7 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
           const chosen = selectedEdge?.from === e.from && selectedEdge?.to === e.to
           return (
             <g key={`${e.from}>${e.to}`}>
-              <path d={d} fill="none" stroke={chosen ? color.accent : st && st.failFrac > 0 ? color.critical : color.borderStrong} strokeLinecap="round" strokeWidth={chosen ? 4 : reduced ? 2 + Math.min(10, flow / 25) : 2} strokeDasharray={reduced && flow > 0 ? '10 6' : undefined} className={reduced && flow > 0 ? 'flow-dash' : undefined} />
+              <path d={d} fill="none" stroke={chosen ? color.accent : st && st.failFrac > 0 ? color.critical : color.borderStrong} strokeLinecap="round" strokeWidth={chosen ? 4 : reduced ? 2 + Math.min(10, flow / 25) : 2} strokeDasharray={reduced && flow > 0 ? '10 6' : undefined} className={reduced ? (flow > 0 ? 'flow-dash' : undefined) : 'wire'} pathLength={reduced ? undefined : 1} />
               {editable && <path d={d} fill="none" stroke="transparent" strokeWidth={18} pointerEvents="stroke" className="edge-hit" onClick={() => onEdge?.(e.from, e.to)} />}
             </g>
           )
@@ -275,6 +294,7 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
                 if (k.key === 'Enter' || k.key === ' ') { k.preventDefault(); onNode?.(n.id) }
                 else if (editable && arrows[k.key]) { k.preventDefault(); const [nx, ny] = clampCell(n.type, n.x + arrows[k.key][0], n.y + arrows[k.key][1]); onMove?.(n.id, nx, ny) }
               }}>
+              <g className="pop" style={{ animationDelay: `${delays.current.get(n.id) ?? 0}ms` }}><g className={`jolt${shake === n.id ? ' shake' : ''}`}>
               {n.type !== 'users' && n.type !== 'lb' && Array.from({ length: Math.min(3, n.instances - 1) }, (_, i) => (
                 <rect key={i} x={(i + 1) * 7} y={-(i + 1) * 7} width={w} height={h} rx={22} fill={color.bg1} stroke={color.borderStrong} strokeWidth={1.5} />
               ))}
@@ -288,7 +308,7 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
                 </g>
               )}
               <Art type={n.type} w={w} h={h} util={st?.util ?? 0} mood={mood} />
-              <Badge health={health} x={w - 4} y={4} />
+              <Badge key={`${n.id}-${health}`} health={health} x={w - 4} y={4} />
               {n.instances > 1 && <text x={w - 8} y={h - 24} textAnchor="end" fill={color.textSecondary} fontSize={14} fontFamily="var(--mono)">×{n.instances}</text>}
               <text x={w / 2} y={h + 24} textAnchor="middle" fill={color.ink} fontSize={16} fontWeight={600} pointerEvents="none">{PARAMS[n.type].label}{st && n.type !== 'users' ? <tspan fill={color.textSecondary} fontWeight={500}>{` ${Math.round(st.util * 100)}%`}</tspan> : null}</text>
               {editable && OUT_TYPES.includes(n.type) && (
@@ -298,6 +318,18 @@ export function Board({ design, snap, ghosts = [], selected, linkFrom, focus, re
                   <circle r={7} fill={color.accent} stroke="#fff" strokeWidth={2.5} />
                 </g>
               )}
+              </g></g>
+            </g>
+          )
+        })}
+        {leaving.map((n) => {
+          const { x, y, w, h } = px(n)
+          return (
+            <g key={`leaving-${n.id}`} transform={`translate(${x},${y})`} aria-hidden pointerEvents="none">
+              <g className="pop leave">
+                <rect width={w} height={h} rx={22} fill={color.bg1} stroke={color.borderSubtle} strokeWidth={1.5} />
+                <Art type={n.type} w={w} h={h} util={0} mood="happy" />
+              </g>
             </g>
           )
         })}

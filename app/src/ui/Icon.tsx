@@ -14,6 +14,7 @@ const P: Record<string, string> = {
   star: 'M10 2.5l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L2.8 7.8l5-.7z',
   close: 'M5 5l10 10M15 5L5 15',
   bolt: 'M11 2L4 11h5l-1 7 8-10h-5z',
+  restart: 'M4.5 10a5.5 5.5 0 1 0 1.8-4.1M4 3v4h4',
   sound: 'M3 8v4h3l4 3V5L6 8zM13 7.5a3.5 3.5 0 0 1 0 5',
   mute: 'M3 8v4h3l4 3V5L6 8zM13 8l4 4M17 8l-4 4',
 }

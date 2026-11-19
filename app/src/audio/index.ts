@@ -1,8 +1,8 @@
 // Web Audio: a data-centre hum that rises with load, plus short cues. Nothing plays before the first user gesture,
 // every cue has a visual twin, and one mute switch silences everything (Design System PRD, section 8).
-type Cue = 'place' | 'connect' | 'invalid' | 'incident1' | 'incident2' | 'incident3' | 'resolved' | 'star' | 'hint'
+type Cue = 'place' | 'connect' | 'remove' | 'invalid' | 'chaos' | 'incident1' | 'incident2' | 'incident3' | 'resolved' | 'star' | 'hint'
 const TONES: Record<Cue, [number, number, OscillatorType][]> = {
-  place: [[520, 0.08, 'sine']], connect: [[660, 0.06, 'sine'], [880, 0.08, 'sine']], invalid: [[180, 0.16, 'triangle']],
+  place: [[520, 0.08, 'sine']], remove: [[420, 0.06, 'sine'], [300, 0.08, 'sine']], chaos: [[140, 0.22, 'sawtooth'], [90, 0.2, 'sawtooth']], connect: [[660, 0.06, 'sine'], [880, 0.08, 'sine']], invalid: [[180, 0.16, 'triangle']],
   incident3: [[620, 0.14, 'sine']], incident2: [[520, 0.14, 'square'], [390, 0.18, 'square']], incident1: [[880, 0.12, 'square'], [440, 0.12, 'square'], [880, 0.12, 'square']],
   resolved: [[520, 0.08, 'sine'], [780, 0.14, 'sine']], star: [[660, 0.08, 'sine'], [880, 0.08, 'sine'], [1320, 0.16, 'sine']], hint: [[440, 0.1, 'triangle']],
 }

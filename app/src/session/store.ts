@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { DEFAULT_CONFIG, LEVELS, freeSlot, levelById, resolveSpot, rubric } from '../content'
 import { audio } from '../audio'
+import { feedback } from '../audio/feedback'
 import { Sim, applyTo, connectError } from '../engine/sim'
 import type { CType, ChaosKind, Command, Design, DNode, EditEntry, Incident, Level, NodeConfig, Snapshot } from '../schema'
 
@@ -92,7 +93,7 @@ export const useGame = create<State>((set, get) => {
       if (!err) set({ designs: { ...s.designs, [levelId]: d } })
     }
     set({ message: err ?? '' })
-    if (s.settings.sound) audio.cue(err ? 'invalid' : command.kind === 'connect' ? 'connect' : 'place')
+    feedback.fire(err ? 'error' : command.kind === 'connect' ? 'connect' : command.kind === 'place' ? 'place' : command.kind === 'remove' || command.kind === 'disconnect' ? 'remove' : 'tap')
     return err
   }
   const resetRun = () => {
@@ -114,6 +115,7 @@ export const useGame = create<State>((set, get) => {
         if (ev.type === 'chaos') {
           timeline.push({ tick: snap.tick, text: `Chaos event: ${ev.name}`, severity: 3, resolved: false, chaos: true })
           chaos = { name: ev.name, tick: snap.tick }
+          feedback.fire('chaos')
           continue
         }
         const inc = ev.incident
@@ -121,8 +123,8 @@ export const useGame = create<State>((set, get) => {
         if (ev.type === 'opened') {
           pager = inc
           if (inc.severity <= 2) focusNode = inc.node
-          if (s0.settings.sound) audio.cue(`incident${inc.severity}` as 'incident1')
-        } else if (s0.settings.sound) audio.cue('resolved')
+          feedback.fire(`incident${inc.severity}` as 'incident1')
+        } else feedback.fire('resolved')
       }
       if (s0.settings.sound) {
         const us = Object.entries(snap.nodes).filter(([id]) => sim!.design.nodes.find((n) => n.id === id)?.type !== 'users').map(([, n]) => n.util)
@@ -142,8 +144,9 @@ export const useGame = create<State>((set, get) => {
           lastRun: { levelId, seed: levelId === 'sandbox' ? 0 : level().chapter * 1000 + s.runs, startDesign: clone(runStart!), editLog: clone(sim.editLog) },
           stars: ev.ship && !level().interview && (!prev || n(stars) >= n(prev)) ? { ...s.stars, [levelId]: stars } : s.stars,
         })
+        if (!ev.ship && !level().sandbox) feedback.fire('error')
         if (ev.ship) {
-          if (s.settings.sound) audio.cue('star')
+          feedback.fire('success')
         }
         return
       }
@@ -261,12 +264,13 @@ export const useGame = create<State>((set, get) => {
       const s = get()
       if (s.hintShown >= 3) return
       set({ hints: s.hints + 1, hintShown: s.hintShown + 1 })
-      if (s.settings.sound) audio.cue('hint')
+      feedback.fire('hint')
     },
     setReduced: (v) => set({ settings: { ...get().settings, reducedMotion: v } }),
     setSound: (v) => {
       set({ settings: { ...get().settings, sound: v } })
       audio.setMuted(!v)
+      feedback.setEnabled(v)
       if (v) audio.unlock(); else audio.stopHum()
     },
     dismissPager: () => set({ pager: null }),
