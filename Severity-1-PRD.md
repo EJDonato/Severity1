@@ -15,6 +15,19 @@ Severity 1 is a browser game that teaches system design by having players build 
 - **Not visual enough.** Boxes and lines read as a diagram, not a living system.
 - **Concepts arrive before they are taught.** Players met load balancers and caches by failing first, with no foundation, and learned by guessing.
 
+## Direction change (19 November 2026): a game, not a course
+
+Playtest feedback: the Academy's lesson-by-lesson introductions felt like a quiz, and the chapter and lesson cards made the product feel like a course. **This is a game.** The product now opens on a landing page with one call to action, Play, which goes straight into the sandbox with every component unlocked and a small working system already on the board.
+
+What this replaces in the sections below:
+
+- **No Academy, no lessons, no locking.** The story hook, analogy, toy simulation and predict-then-see beats are removed, along with component locking (FR-05, FR-06), test-out (FR-19), the Codex and glossary (FR-12, FR-26) and the before/after "explain this architecture" check (FR-24). Every component is available from the first second.
+- **The sandbox is home** (FR-20, promoted from P2). The player builds, sets traffic, and breaks things with chaos buttons.
+- **The campaign becomes optional Challenges.** The 11 levels (Tutorial, Chapters 1 to 9, the boss) and Interview mode remain, opened from a Challenges list inside the sandbox. They keep their scenarios, SLOs, stars, hints, incidents and debriefs. They are no longer gated by lessons or by each other.
+- **Concept teaching moves into the play itself:** incidents name the cause, hints are tiered, and the debrief explains how large networks solve the same problem.
+
+The simulation, components, chaos, scoring, replay and accessibility requirements are unchanged. Where the sections below describe lessons, the Codex or locking, this note takes precedence.
+
 ## Goals, non-goals and success metrics
 
 Version 1 succeeds if players finish the Build Friendbook campaign able to explain and sketch its architecture, and say they had fun doing it.

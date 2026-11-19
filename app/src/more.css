@@ -23,6 +23,22 @@ kbd { font: 500 13px var(--mono); background: #fff; border: 1px solid var(--c-bo
 .glossary dt { font-weight: 600; } .glossary dd { margin: 0; font-size: 14px; }
 .codex { margin-top: 24px; }
 .scale { left: 20px; bottom: auto; top: 12px; }
+
+/* alerts live at the bottom right so they never cover the controls */
+.pager { top: auto; bottom: 24px; right: 24px; }
+@media (max-width: 1100px) { .pager { top: auto; bottom: 12px; } }
+
+/* landing: a headline, one button, a small living system */
+.landing { max-width: 1040px; margin: 0 auto; }
+.landing .hero { padding: 88px 0 40px; }
+.btn.huge { min-height: 64px; padding: 0 64px; font-size: 22px; font-weight: 600; letter-spacing: -0.015em; }
+.demo { margin: 8px auto 0; max-width: 940px; pointer-events: none; user-select: none; border-radius: 26px; box-shadow: var(--shadow); }
+.level-head .challenges-btn { margin-left: auto; align-self: center; }
+.challenges { max-width: 640px; max-height: 80vh; overflow: auto; }
+.challenge-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; }
+.challenge-list li { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--c-border-subtle); }
+.challenge-list li:last-child { border-bottom: 0; }
+.challenge-list p { margin: 2px 0 0; }
 .compare-boards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 @media (max-width: 800px) { .compare-boards { grid-template-columns: 1fr; } }
 .compare-boards figure { margin: 0; } .compare-boards figcaption { margin-top: 4px; }

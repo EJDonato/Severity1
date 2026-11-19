@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LESSONS, LEVELS, SANDBOX_LEVEL } from '.'
+import { INTERVIEW_LEVEL, LEVELS, SANDBOX_LEVEL } from '.'
 import { Sim, connectError, runAll } from '../engine/sim'
 import type { Design, EditEntry, Level, NodeConfig } from '../schema'
 
@@ -14,23 +14,13 @@ const withNode = (d: Design, id: string, f: (n: Design['nodes'][number]) => void
 const level = (id: string) => LEVELS.find((l) => l.id === id)!
 
 describe('content rules', () => {
-  it('every placeable component is unlocked by exactly one lesson', () => {
-    for (const t of new Set(LEVELS.flatMap((l) => l.placeable)))
-      expect(LESSONS.filter((l) => (l.unlocks as string[]).includes(t)), t).toHaveLength(1)
+  it('the sandbox and interview unlock every component, and there are 11 challenge levels', () => {
+    expect(LEVELS).toHaveLength(11)
+    for (const l of [SANDBOX_LEVEL, INTERVIEW_LEVEL]) expect(l.placeable).toHaveLength(14)
   })
-  it('every level references real lessons, and a lesson comes before the parts it unlocks', () => {
-    for (const l of LEVELS) for (const id of l.lessons) expect(LESSONS.some((x) => x.id === id), `${l.id}:${id}`).toBe(true)
-    for (const l of LEVELS) {
-      const unlockedByLessons = new Set(LEVELS.filter((x) => x.chapter <= l.chapter).flatMap((x) => x.lessons).flatMap((id) => LESSONS.find((s) => s.id === id)!.unlocks as string[]))
-      if (l.id !== 'boss') for (const t of l.placeable) expect(unlockedByLessons.has(t), `${l.id} places ${t} before its lesson`).toBe(true)
-    }
-  })
-  it('every Codex card has at least one source, and every lesson has glossary terms and a prediction', () => {
-    for (const l of LESSONS) {
-      expect(l.codex.sources.length, l.id).toBeGreaterThan(0)
-      expect(l.terms?.length ?? 0, l.id).toBeGreaterThan(0)
-      expect(l.predict.options[l.predict.answer], l.id).toBeTruthy()
-    }
+  it('the sandbox opens on a working system', () => {
+    expect(SANDBOX_LEVEL.startDesign.nodes.length).toBeGreaterThan(3)
+    expect(runAll(SANDBOX_LEVEL, SANDBOX_LEVEL.startDesign, 1, [], () => {}).hash().length).toBeGreaterThan(0)
   })
   it('every design in the content is validly wired', () => {
     for (const l of [...LEVELS, SANDBOX_LEVEL])
@@ -41,11 +31,6 @@ describe('content rules', () => {
   })
   it('chaos events fall inside the judged (final) traffic cycle', () => {
     for (const l of LEVELS) for (const c of l.chaos ?? []) expect(c.tick, l.id).toBeGreaterThanOrEqual(l.traffic.cycle * (l.cycles - 1))
-  })
-  it('lesson toy designs are valid too', () => {
-    for (const l of LESSONS) for (const t of l.toy.designs) for (const e of t.design.edges) {
-      expect(connectError({ ...t.design, edges: [] }, e.from, e.to), `${l.id} ${e.from}>${e.to}`).toBeNull()
-    }
   })
 })
 

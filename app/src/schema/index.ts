@@ -32,7 +32,6 @@ export interface Level {
   chapter: number
   title: string
   story: string
-  lessons: string[]
   placeable: CType[]
   startDesign: Design
   reference: Design
@@ -42,32 +41,11 @@ export interface Level {
   budget: number
   minDesign: CType[]
   hints: [string, string, string]
-  codex: string
   debrief: { note: string; diffs: Record<string, string> }
   regions?: { farShare: number; farMs: number }
   chaos?: ChaosEvent[]
   sandbox?: boolean
   interview?: { minutes: number }
-}
-
-export interface Toy {
-  base: Rates
-  designs: { label: string; design: Design }[]
-  stepper?: { label: string; id: string; min: number; max: number }
-  load?: { label: string; steps: number[] }
-  regions?: { farShare: number; farMs: number }
-  fanout?: number
-}
-export interface Lesson {
-  id: string
-  title: string
-  unlocks: (CType | 'metrics' | 'scaling' | 'replicas')[]
-  hook: { lines: string[]; caption: string }
-  analogy: { pairs: [string, string][] }
-  toy: Toy
-  predict: { question: string; options: string[]; answer: number; scenario: { design: number; instances?: number; load?: number }; explain: string }
-  codex: { analogy: string; note: string; sources: string[] }
-  terms?: { term: string; meaning: string }[]
 }
 
 export interface Incident { id: string; node: string; severity: 1 | 2 | 3; name: string; openedTick: number; resolvedTick?: number }

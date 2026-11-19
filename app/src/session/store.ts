@@ -7,8 +7,6 @@ import type { CType, ChaosKind, Command, Design, DNode, EditEntry, Incident, Lev
 
 export type Screen =
   | { name: 'menu' }
-  | { name: 'check'; phase: 'before' | 'after' }
-  | { name: 'lesson'; id: string }
   | { name: 'level'; id: string }
   | { name: 'debrief'; id: string }
 export interface Stars { ship: boolean; thrifty: boolean; senior: boolean; fromReference: boolean }
@@ -23,11 +21,9 @@ const SINGLE: CType[] = ['users', 'dns', 'cdn', 'limiter', 'lb', 'queue', 'monit
 
 interface State {
   screen: Screen
-  lessonsDone: string[]
   stars: Record<string, Stars>
   designs: Record<string, Design>
   fromRef: Record<string, boolean>
-  check: { before?: number; after?: number }
   settings: { speed: number; reducedMotion: boolean; sound: boolean }
   consentAsked: boolean
   snap: Snapshot | null
@@ -46,11 +42,8 @@ interface State {
   deadline: number | null
   chaos: { name: string; tick: number } | null
   go(s: Screen): void
-  completeLesson(id: string): void
   setConsent(v: boolean): void
-  setCheck(phase: 'before' | 'after', score: number): void
   enterLevel(id: string): void
-  testOut(id: string): void
   restartFromReference(): void
   place(type: CType): void
   remove(id: string): void
@@ -158,7 +151,7 @@ export const useGame = create<State>((set, get) => {
 
   return {
     screen: { name: 'menu' },
-    lessonsDone: [], stars: {}, designs: {}, fromRef: {}, check: {},
+    stars: {}, designs: {}, fromRef: {},
     settings: { speed: 1, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches, sound: false },
     consentAsked: false,
     snap: null, running: false, runs: 0, hints: 0, hintShown: 0, result: null, timeline: [], lastRun: null, message: '',
@@ -168,23 +161,14 @@ export const useGame = create<State>((set, get) => {
       if (screen.name !== 'level' && screen.name !== 'debrief') resetRun()
       set({ screen, message: '', selected: null, linkFrom: null })
     },
-    completeLesson: (id) => {
-      if (!get().lessonsDone.includes(id)) set({ lessonsDone: [...get().lessonsDone, id] })
-      telemetry.track('lesson_completed', { lesson: id })
-    },
     setConsent: (v) => { telemetry.setConsent(v); set({ consentAsked: true }) },
-    setCheck: (phase, score) => {
-      set({ check: { ...get().check, [phase]: score } })
-      telemetry.track('check_taken', { phase, score })
-    },
     enterLevel: (id) => {
       resetRun()
       levelId = id
       const s = get()
       const l = levelById(id)
-      const prev = LEVELS[l.chapter - 1]
-      // Continue from the player's own design by default; otherwise the level's start design.
-      const own = s.designs[id] ?? (prev && s.stars[prev.id]?.ship ? s.designs[prev.id] : undefined)
+      // Come back to your own design on a level you already touched; otherwise start from the level's start design.
+      const own = s.designs[id]
       set({
         screen: { name: 'level', id },
         designs: { ...s.designs, [id]: clone(own ?? l.startDesign) },
@@ -192,17 +176,6 @@ export const useGame = create<State>((set, get) => {
         deadline: l.interview ? Date.now() + l.interview.minutes * 60000 : null,
       })
       telemetry.track('level_started', { level: id })
-    },
-    // Test out (FR-19): skip a chapter's lessons and start from its reference starting design; stars are marked as such.
-    testOut: (id) => {
-      const l = levelById(id)
-      const s = get()
-      set({
-        lessonsDone: [...new Set([...s.lessonsDone, ...l.lessons])],
-        designs: { ...s.designs, [id]: clone(l.startDesign) },
-        fromRef: { ...s.fromRef, [id]: true },
-      })
-      get().enterLevel(id)
     },
     restartFromReference: () => {
       resetRun()

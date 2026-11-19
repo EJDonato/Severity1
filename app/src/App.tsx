@@ -2,8 +2,8 @@ import { useEffect } from 'react'
 import { applyTokens } from './tokens'
 import { useGame } from './session/store'
 import { telemetry } from './telemetry'
-import { Check, Debrief, Menu } from './ui/Menu'
-import { LessonScreen } from './ui/Lesson'
+import { Debrief } from './ui/Debrief'
+import { Landing } from './ui/Landing'
 import { LevelScreen } from './ui/Level'
 import { Wordmark } from './ui/Icon'
 
@@ -31,9 +31,7 @@ export default function App() {
       )}
       {g.consentAsked && telemetry.consent() && <div className="muted small consent-note"><button className="btn quiet small" onClick={() => g.setConsent(false)}>Turn off anonymous stats</button></div>}
       <main id="main">
-        {s.name === 'menu' && <Menu />}
-        {s.name === 'check' && <Check phase={s.phase} />}
-        {s.name === 'lesson' && <LessonScreen key={s.id} id={s.id} />}
+        {s.name === 'menu' && <Landing />}
         {s.name === 'level' && <LevelScreen key={s.id} id={s.id} />}
         {s.name === 'debrief' && <Debrief id={s.id} />}
       </main>

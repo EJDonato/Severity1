@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Board } from '../board/Board'
-import { LESSONS, levelById } from '../content'
+import { levelById } from '../content'
 import { ALL_TYPES, PARAMS, costOf } from '../schema'
 import type { CType, ChaosKind, DNode, Design, NodeConfig } from '../schema'
 import { SPEEDS, useGame } from '../session/store'
 import { Icon, sevIcon } from './Icon'
+import { Challenges } from './Challenges'
 import { Palette } from './Palette'
 
 const total = (d: Design) => d.nodes.reduce((s, n) => s + costOf(n), 0)
@@ -46,13 +47,13 @@ function Stepper({ label, value, min, max, onChange, hint }: { label: string; va
   )
 }
 
-function Settings({ node, scalingOn, replicasOn }: { node: DNode; scalingOn: boolean; replicasOn: boolean }) {
+function Settings({ node }: { node: DNode }) {
   const g = useGame()
   const cfg = (c: NodeConfig) => g.setConfig(node.id, c)
   return (
     <div className="settings">
-      {(node.type === 'app' || node.type === 'lb') && scalingOn && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS[node.type].cost}/mo each`} />}
-      {node.type === 'db' && replicasOn && <Stepper label="Read replicas" value={node.instances - 1} min={0} max={8} onChange={(v) => g.setInstances(node.id, v + 1)} hint="$120/mo each" />}
+      {(node.type === 'app' || node.type === 'lb') && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS[node.type].cost}/mo each`} />}
+      {node.type === 'db' && <Stepper label="Read replicas" value={node.instances - 1} min={0} max={8} onChange={(v) => g.setInstances(node.id, v + 1)} hint="$120/mo each" />}
       {node.type === 'worker' && <Stepper label="Workers" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.worker.cost}/mo each`} />}
       {node.type === 'shard' && <Stepper label="Shards" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.shard.cost}/mo each`} />}
       {node.type === 'search' && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.search.cost}/mo each`} />}
@@ -82,47 +83,34 @@ export function LevelScreen({ id }: { id: string }) {
     return () => clearInterval(t)
   }, [interview])
   const left = g.deadline ? Math.max(0, Math.round((g.deadline - now) / 1000)) : null
-  const metricsOn = sandbox || g.lessonsDone.includes('latency')
-  const scalingOn = sandbox || g.lessonsDone.includes('load-balancing')
-  const replicasOn = sandbox || g.lessonsDone.includes('replication')
+  const [picking, setPicking] = useState(false)
   const ghosts = useMemo(() => (sandbox ? [] : level.reference.nodes.filter((n) => !design.nodes.some((x) => x.id === n.id) && level.placeable.includes(n.type))), [design, level, sandbox])
   const sel = design.nodes.find((n) => n.id === g.selected)
   const m = snap?.metrics
   const idle = !g.running && !snap
-  const lessonFor = (t: CType) => LESSONS.filter((l) => (l.unlocks as string[]).includes(t))
-  const unlocked = (t: CType) => level.placeable.includes(t) && (sandbox || lessonFor(t).every((l) => g.lessonsDone.includes(l.id)))
   const hint = g.hintShown > 0 ? level.hints.slice(0, g.hintShown) : []
   const result = g.result
   const chaosNow = g.chaos && snap && snap.tick - g.chaos.tick < 8 ? g.chaos : null
-  const first = level.lessons[0]
 
   return (
     <div className="level">
       <header className="level-head">
-        <button className="btn quiet" onClick={() => g.go({ name: 'menu' })}><Icon name="back" /> Chapters</button>
+        <button className="btn quiet" onClick={() => g.go({ name: 'menu' })}><Icon name="back" /> Home</button>
         <div>
           <h2>{level.title}</h2>
           <p className="muted">{level.story}</p>
         </div>
+        <button className="btn challenges-btn" onClick={() => setPicking(true)}>Challenges</button>
       </header>
 
       <div className="level-grid">
         <section className="stage" aria-label="Board">
           <div className="toolbar" role="toolbar" aria-label="Components">
-            {ALL_TYPES.map((t) => {
-              if (!level.placeable.includes(t)) return null
-              const ok = unlocked(t)
-              const why = lessonFor(t).map((l) => l.title).join(', ')
-              return (
-                <button key={t} className="chip" disabled={!ok} onClick={() => g.place(t)} title={ok ? `${PARAMS[t].label}, $${PARAMS[t].cost}/month` : `Unlocks in: ${why}`}
-                  aria-label={ok ? `Add ${PARAMS[t].label}` : `${PARAMS[t].label}, locked. Unlocks in: ${why}`}>
-                  <Icon name={ok ? 'plus' : 'lock'} size={14} /> {PARAMS[t].label}
-                </button>
-              )
-            })}
-            {!sandbox && (
-              <span className="chip-note muted small">Locked parts unlock through their lesson.</span>
-            )}
+            {ALL_TYPES.filter((t) => level.placeable.includes(t)).map((t) => (
+              <button key={t} className="chip" onClick={() => g.place(t)} title={`${PARAMS[t].label}, $${PARAMS[t].cost}/month`} aria-label={`Add ${PARAMS[t].label}`}>
+                <Icon name="plus" size={14} /> {PARAMS[t].label}
+              </button>
+            ))}
           </div>
 
           {left !== null && <div className={`chaos-banner${left === 0 ? ' over' : ''}`} role="timer" aria-label="Time left"><Icon name="bolt" /> <strong className="mono">{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</strong> <span>{left === 0 ? 'Time is up. Run your design now.' : 'left to design. Press Start whenever you are ready.'}</span></div>}
@@ -143,7 +131,7 @@ export function LevelScreen({ id }: { id: string }) {
                 </div>
                 <span className="small muted">{design.edges.filter((e) => e.from === sel.id).map((e) => `→ ${e.to}`).join('  ') || 'no outgoing connections'}</span>
               </div>
-              <Settings node={sel} scalingOn={scalingOn} replicasOn={replicasOn} />
+              <Settings node={sel} />
               <div className="row">
                 {CAN_CONNECT.includes(sel.type) && (
                   <button className={`btn${g.linkFrom === sel.id ? ' primary' : ''}`} onClick={() => g.startLink(sel.id)}>{g.linkFrom === sel.id ? 'Pick target…' : 'Connect to…'}</button>
@@ -187,14 +175,14 @@ export function LevelScreen({ id }: { id: string }) {
             {!sandbox && <button className="btn quiet small" onClick={g.restartFromReference}>Restart chapter from reference design</button>}
           </div>
 
-          {metricsOn && (
+          {(
             <div className="panel metrics" aria-label="Live metrics">
               <h3>Live metrics</h3>
               <div className="tiles">
                 <Tile label="Requests/s" value={m ? m.rps.toFixed(0) : '–'} />
                 <Tile label="p50" value={m ? `${Math.round(m.p50)} ms` : '–'} />
-                <Tile label="p95" value={m ? `${Math.round(m.p95)} ms` : '–'} bad={!!m && m.p95 > level.slo.p95Ms} />
-                <Tile label="Errors" value={m ? `${(m.errorRate * 100).toFixed(1)}%` : '–'} bad={!!m && m.errorRate > level.slo.errorRate} />
+                <Tile label="p95" value={m ? `${Math.round(m.p95)} ms` : '–'} bad={!!m && !level.sandbox && m.p95 > level.slo.p95Ms} />
+                <Tile label="Errors" value={m ? `${(m.errorRate * 100).toFixed(1)}%` : '–'} bad={!!m && !level.sandbox && m.errorRate > level.slo.errorRate} />
                 <Tile label="Cost/mo" value={`$${m ? m.cost : total(design)}`} bad={!sandbox && (m ? m.cost : total(design)) > level.budget} />
                 {m && m.botRps > 0 ? <Tile label="Bot traffic/s" value={m.botRps.toFixed(0)} /> : <Tile label="Available" value={m ? `${(m.availability * 100).toFixed(1)}%` : '–'} />}
               </div>
@@ -223,7 +211,6 @@ export function LevelScreen({ id }: { id: string }) {
                   {['Nudge', 'Concept', 'Specific fix'][g.hintShown]} (costs the Senior engineer star)
                 </button>
               )}
-              {g.hintShown >= 2 && first && <button className="btn quiet small" onClick={() => g.go({ name: 'lesson', id: first })}>Reopen the lesson</button>}
             </div>
           )}
         </aside>
@@ -237,6 +224,7 @@ export function LevelScreen({ id }: { id: string }) {
         </ul>
       </section>
       <Palette />
+      {picking && <Challenges onClose={() => setPicking(false)} />}
 
       {g.pager && (
         <div className={`pager sev${g.pager.severity}`} role="alert">

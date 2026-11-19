@@ -1,8 +1,10 @@
 # Severity 1
 
-A browser game that teaches system design. You build Friendbook, a fictional social network, from a dorm-room site into a global platform, and watch live traffic stress and break it.
+A browser game about system design. You build Friendbook, a fictional social network, out of live infrastructure and watch real traffic stress and break it.
 
-- Product: [Severity-1-PRD.md](Severity-1-PRD.md) · Architecture: [Severity-1-System-Architecture-PRD.md](Severity-1-System-Architecture-PRD.md) · Design system: [Severity-1-Design-System-PRD.md](Severity-1-Design-System-PRD.md)
+Press **Play** and you are in the sandbox: every component unlocked, a small working system on the board, traffic you control, and chaos buttons to break it on purpose. Optional **Challenges** (11 scenarios from a dorm-room site to New Year's Eve, plus an interview mode) give you goals, stars and a debrief.
+
+- Product: [Severity-1-PRD.md](Severity-1-PRD.md) (see "Direction change") · Architecture: [Severity-1-System-Architecture-PRD.md](Severity-1-System-Architecture-PRD.md) · Design system: [Severity-1-Design-System-PRD.md](Severity-1-Design-System-PRD.md)
 - Context for design work: [PRODUCT.md](PRODUCT.md), [DESIGN.md](DESIGN.md)
 
 ## Run it
@@ -17,22 +19,18 @@ npm run e2e        # Playwright end-to-end tests (uses your installed Chrome)
 
 ## What is built
 
-Everything in the product PRD's v1 scope: the Tutorial, Chapters 1 to 9 and the boss level (11 levels), 12 Academy lessons, all 14 components, tick-based simulation with incidents, chaos events, SLO judging and three-star scoring, guided build, hints, test-out, Codex with searchable glossary, debrief with run replay and side-by-side design comparison, sandbox, interview mode with a scored rubric, keyboard command palette, screen-reader design description, reduced motion, sound (off by default), consent-gated anonymous analytics, offline play, and no persistence.
+Landing page with Play, the sandbox, 11 challenge levels and interview mode, all 14 components, a tick-based simulation with incidents, chaos events, SLO judging and star scoring, run replay and side-by-side design comparison in the debrief, a keyboard command palette (press `/`), screen-reader design description, reduced motion, sound (off by default), consent-gated anonymous analytics, offline play, and no persistence.
 
-| FR | Status |
-| --- | --- |
-| FR-01 to FR-15, FR-17 to FR-20, FR-22 to FR-28 | Built. FR-01 uses click-to-place and click-to-connect plus the command palette; there is no drag and no zoom or pan. |
-| FR-16 | Built: Chapters 3–9 and the boss level. |
-| FR-21 accounts, cloud sync, leaderboards | Not built, on purpose: it needs a backend and contradicts the v1 decision of no saving. |
+Removed on purpose: the Academy lessons, quizzes, component locking, test-out, the Codex and the before/after check. See the PRD's "Direction change".
 
 ## Known gaps and honest caveats
 
-- **Simulation runs on the main thread, not in a Web Worker** (architecture PRD, section 6). A tick costs well under 4 ms on the largest design (asserted in tests), so nothing is lost at this scale, but the worker boundary is not built.
-- **Particles use Canvas 2D, not PixiJS.** Fine at the current few hundred particles; the 2,000-particle target has not been profiled.
-- **Content is typed TypeScript, not JSON validated by JSON Schema.** The content tests (`src/content/content.test.ts`) enforce the same rules: one lesson per component, every reference design passes, every starting design fails, minimum-design guards, sources on every Codex card.
-- **Golden replays run in Chrome only** (via the Node test runner and Chrome end-to-end), not in Firefox and Safari.
-- **Chapters 3–9 numbers are tuned by script, not reviewed.** The PRD asks for a senior engineer to review the simulation constants and lessons before a playtest. That has not happened.
+- **Accounts, cloud sync and leaderboards (FR-21) are not built**: they need a backend and contradict the v1 decision of no saving.
+- **The simulation runs on the main thread, not in a Web Worker.** A tick costs well under 4 ms on the largest design (asserted in tests).
+- **Particles use Canvas 2D, not PixiJS.** The 2,000-particle target has not been profiled.
+- **Content is typed TypeScript, not JSON validated by JSON Schema.** `src/content/content.test.ts` enforces the same rules: every reference design passes, every starting design fails, minimum-design guards hold, wrong settings fail.
+- **Golden replays run in Chrome only**, not Firefox and Safari.
+- **The challenge numbers are tuned by script, not reviewed** by a senior engineer, as the PRD asks before a playtest.
 - **Analytics has no collection endpoint.** Events queue in memory and send only if `VITE_ANALYTICS_URL` is set.
-- **Lesson scenes are text and a live toy simulation, not illustrated art.** Sound is synthesized tones, not authored audio.
+- **Sound is synthesized tones.** There is no authored art or audio.
 - **Not done:** colorblind-simulation checks, a Lighthouse load-time check, Storybook and screenshot regression, a manual WCAG audit.
-- Non-engineering items from the PRDs (team, budget, legal review of the wordmark, hosting choice) are still open.
