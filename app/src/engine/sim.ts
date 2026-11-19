@@ -50,6 +50,9 @@ export function connectError(d: Design, from: string, to: string): string | null
   if (b.type === 'users') return 'Nothing sends traffic to users; requests flow away from them.'
   if (a.type === 'users' && ['db', 'shard', 'storage', 'search', 'cache'].includes(b.type)) return `Users should never talk to the ${PARAMS[b.type].label} directly. Go through an app server.`
   if (a.type === 'monitor' || b.type === 'monitor') return 'Monitoring watches the whole system; it does not need wires.'
+  // One front door reaches one App Server. Sharing traffic between several is the Load Balancer's job.
+  if (b.type === 'app' && ['users', 'dns', 'limiter'].includes(a.type) && d.edges.some((e) => e.from === from && d.nodes.find((n) => n.id === e.to)?.type === 'app'))
+    return `${PARAMS[a.type].label} can only send to one App Server. Add a Load Balancer to share traffic between several.`
   if (!(OK[a.type] ?? []).includes(b.type)) return `${PARAMS[a.type].label} can't send requests to ${PARAMS[b.type].label}.`
   return null
 }
@@ -155,14 +158,30 @@ export class Sim {
     const hasDns = this.hasType('dns')
     const regionOut = chaos('regionOut')
     // Effective instances after wiring rules and chaos. Stateless servers only scale out behind a balancer.
-    const eff = (n: DNode): number => {
-      let e = n.type === 'app' && !fedByLb.has(n.id) ? 1 : ['lb', 'app', 'db', 'shard', 'worker', 'search'].includes(n.type) ? n.instances : 1
-      for (const a of this.active) if (a.kind === 'crash' && a.target === n.type) e = Math.max(0, e - 1)
-      if (regionOut && ['app', 'lb', 'cache', 'db', 'shard', 'search', 'queue', 'worker'].includes(n.type)) {
-        // DNS failover moves users to the surviving region: it keeps half the app capacity. Without it the whole system is down.
-        e = hasDns ? (n.type === 'app' ? e - Math.ceil(e / 3) : e) : 0
+    // Machines are separate parts on the board, so failures take out whole machines.
+    // A crash removes one machine of its target type (or one replica/shard of a database);
+    // a region outage removes a third of the App Servers when DNS can fail over, and everything when it cannot.
+    const base = (n: DNode) => (n.type === 'app' && !fedByLb.has(n.id) ? 1 : ['lb', 'app', 'db', 'shard', 'worker', 'search'].includes(n.type) ? n.instances : 1)
+    const lost = new Map<string, number>()
+    for (const a of this.active) {
+      if (a.kind !== 'crash' || !a.target) continue
+      const victim = nodes.filter((n) => n.type === a.target).find((n) => base(n) - (lost.get(n.id) ?? 0) > 0)
+      if (victim) lost.set(victim.id, (lost.get(victim.id) ?? 0) + 1)
+    }
+    if (regionOut && hasDns) {
+      const apps = nodes.filter((n) => n.type === 'app')
+      let need = Math.ceil(apps.reduce((s, n) => s + base(n), 0) / 3)
+      for (const n of apps) {
+        if (need <= 0) break
+        const left = base(n) - (lost.get(n.id) ?? 0)
+        const take = Math.min(left, need)
+        lost.set(n.id, (lost.get(n.id) ?? 0) + take)
+        need -= take
       }
-      return e
+    }
+    const eff = (n: DNode): number => {
+      if (regionOut && !hasDns && ['app', 'lb', 'cache', 'db', 'shard', 'search', 'queue', 'worker'].includes(n.type)) return 0
+      return Math.max(0, base(n) - (lost.get(n.id) ?? 0))
     }
     const capMult = (n: DNode) => (n.type === 'app' && chaos('badDeploy') ? 0.5 : 1)
 

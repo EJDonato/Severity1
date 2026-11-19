@@ -77,8 +77,10 @@ describe('solvability', () => {
     expect(evalOf(level('ch7'), withNode(level('ch7').reference, 'shard', (n) => { n.config = { shardKey: 'region' } })).ship, 'region key').toBe(false)
     for (const limit of ['low', 'high'] as NodeConfig['limit'][])
       expect(evalOf(level('ch8'), withNode(level('ch8').reference, 'limiter', (n) => { n.config = { limit } })).ship, `limit ${limit}`).toBe(false)
-    expect(evalOf(level('ch5'), withNode(level('ch5').reference, 'worker', (n) => { n.instances = 1 })).ship, 'one worker').toBe(false)
-    expect(evalOf(level('ch9'), withNode(level('ch9').reference, 'lb', (n) => { n.instances = 1 })).ship, 'single load balancer').toBe(false)
+    const without = (d: Design, drop: (id: string) => boolean): Design => ({ nodes: d.nodes.filter((n) => !drop(n.id)), edges: d.edges.filter((e) => !drop(e.from) && !drop(e.to)) })
+    expect(evalOf(level('ch5'), without(level('ch5').reference, (id) => /^worker\d/.test(id))).ship, 'one worker').toBe(false)
+    expect(evalOf(level('ch9'), without(level('ch9').reference, (id) => id === 'lb2')).ship, 'single load balancer').toBe(false)
+    expect(evalOf(level('ch2'), without(level('ch2').reference, (id) => id === 'app2')).ship, 'one app server behind the balancer').toBe(false)
   })
 })
 

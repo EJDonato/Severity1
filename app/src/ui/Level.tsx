@@ -49,11 +49,11 @@ function Settings({ node }: { node: DNode }) {
   const cfg = (c: NodeConfig) => g.setConfig(node.id, c)
   return (
     <div className="settings">
-      {(node.type === 'app' || node.type === 'lb') && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`Identical copies running side by side. More copies share more traffic; each costs $${PARAMS[node.type].cost}/mo.${node.type === 'app' ? ' Copies only share the work behind a Load Balancer.' : ''}`} />}
+      {(node.type === 'app' || node.type === 'worker' || node.type === 'search' || node.type === 'lb') && (
+        <p className="muted small">Need more? Drag another {PARAMS[node.type].label} onto the board and wire it up{node.type === 'app' ? ' behind a Load Balancer' : node.type === 'worker' ? ' to the Message Queue' : ''}.</p>
+      )}
       {node.type === 'db' && <Stepper label="Read replicas" value={node.instances - 1} min={0} max={8} onChange={(v) => g.setInstances(node.id, v + 1)} hint="$120/mo each" />}
-      {node.type === 'worker' && <Stepper label="Workers" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.worker.cost}/mo each`} />}
       {node.type === 'shard' && <Stepper label="Shards" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`$${PARAMS.shard.cost}/mo each`} />}
-      {node.type === 'search' && <Stepper label="Instances" value={node.instances} min={1} max={16} onChange={(v) => g.setInstances(node.id, v)} hint={`Identical copies of the index sharing the searches; each costs $${PARAMS.search.cost}/mo.`} />}
       {node.type === 'cache' && (
         <>
           <Select label="Cache size" value={node.config?.cacheSize ?? 2} options={[[1, 'Small'], [2, 'Medium'], [3, 'Large']]} onChange={(v) => cfg({ cacheSize: v as 1 | 2 | 3 })} />

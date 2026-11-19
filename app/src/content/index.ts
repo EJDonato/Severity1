@@ -3,56 +3,75 @@ import { SIZE, clampCell } from '../tokens'
 import type { CType, DNode, Design, Level, NodeConfig, Rates } from '../schema'
 
 // Candidate grid slots per component, in cells. The first free one is used when the player places a part.
-export const SLOTS: Record<CType, [number, number][]> = {
-  users: [[0.5, 4]], dns: [[3, 4]], limiter: [[6, 4]], cdn: [[6, 0]], lb: [[9, 4]], app: [[13, 4], [13, 8]],
-  cache: [[16, 4]], queue: [[16, 0]], worker: [[19, 0]], db: [[19, 4]], shard: [[19, 4], [21, 4]], search: [[16, 8]], storage: [[19, 8]], monitor: [[0.5, 8]],
-}
-const at = (type: CType, i = 0) => SLOTS[type][i]
-const node = (type: CType, instances = 1, config?: NodeConfig, id: string = type): DNode => ({ id, type, x: at(type)[0], y: at(type)[1], instances, ...(config ? { config } : {}) })
-const e = (from: string, to: string) => ({ from, to })
-const rates = (read: number, write: number, photo: number, upload: number, search = 0, bot = 0): Rates => ({ read, write, photo, upload, search, bot })
-const design = (nodes: DNode[], edges: [string, string][]): Design => ({ nodes, edges: edges.map(([a, b]) => e(a, b)) })
+// How many App Servers and Workers each stage's solution runs (tuned so each stage clears with headroom).
+const APPS = { ch3: 4, ch4: 2, ch5: 2, ch6: 3, ch7: 5, ch8: 5, ch9: 4, boss: 7 }
+const WORKERS = { ch5: 3, boss: 4 }
 
+// Board layout, in cells. Repeatable parts (App Servers, Workers, Load Balancers) have several slots.
+const rows = (k: number): number[] => (k <= 0 ? [] : k === 1 ? [5] : k === 2 ? [3.5, 6.5] : k === 3 ? [2, 5, 8] : [0.5, 3.5, 6.5, 9.5])
+const appSpots = (n: number): [number, number][] => [...rows(Math.min(n, 4)).map((y): [number, number] => [13.5, y]), ...rows(n - 4).map((y): [number, number] => [16.5, y])]
+export const SLOTS: Record<CType, [number, number][]> = {
+  users: [[0.5, 5]], dns: [[3.5, 5]], limiter: [[6.5, 5]], cdn: [[6.5, 1]], lb: [[9.5, 5], [9.5, 8.5]],
+  app: [[13.5, 5], [13.5, 2], [13.5, 8], [16.5, 5], [16.5, 2], [16.5, 8], [13.5, 10.25], [16.5, 10.25]],
+  cache: [[19.5, 5]], queue: [[19.5, 1.5]], search: [[19.5, 8.5]],
+  db: [[22.5, 5]], shard: [[22.5, 5]], storage: [[22.5, 8.5]],
+  worker: [[25.5, 0.5], [25.5, 3.5], [25.5, 6.5], [25.5, 9.5]], monitor: [[0.5, 9.5]],
+}
+const rates = (read: number, write: number, photo: number, upload: number, search = 0, bot = 0): Rates => ({ read, write, photo, upload, search, bot })
+
+// Every stage's design is built from separate machines: more capacity means more App Servers on the board.
+interface Spec { apps?: number; lbs?: number; storage?: boolean; cache?: NodeConfig; dns?: boolean; cdn?: boolean; workers?: number; search?: boolean; shards?: number; limiter?: NodeConfig['limit']; monitor?: boolean }
+function build(sp: Spec): Design {
+  const nodes: DNode[] = []
+  const edges: { from: string; to: string }[] = []
+  const add = (id: string, type: CType, x: number, y: number, instances = 1, config?: NodeConfig) => { nodes.push({ id, type, x, y, instances, ...(config ? { config } : {}) }); return id }
+  const wire = (from: string, to: string) => edges.push({ from, to })
+  add('users', 'users', 0.5, 5)
+  let door = 'users'
+  if (sp.dns) { add('dns', 'dns', 3.5, 5); wire('users', 'dns'); door = 'dns' }
+  if (sp.cdn) { add('cdn', 'cdn', 6.5, 1); wire(door, 'cdn') }
+  if (sp.limiter) { add('limiter', 'limiter', 6.5, 5, 1, { limit: sp.limiter }); wire(door, 'limiter'); door = 'limiter' }
+  const apps = appSpots(sp.apps ?? 1).map(([x, y], i) => add(i ? `app${i + 1}` : 'app', 'app', x, y))
+  const lbs = sp.lbs ?? 0
+  if (lbs) {
+    for (let i = 0; i < lbs; i++) {
+      const lb = add(i ? `lb${i + 1}` : 'lb', 'lb', 9.5, lbs === 1 ? 5 : [3.5, 6.5][i])
+      wire(door, lb)
+      for (const a of apps) wire(lb, a)
+    }
+  } else wire(door, apps[0])
+  const data = sp.shards ? add('shard', 'shard', 22.5, 5, sp.shards, { shardKey: 'userId' }) : add('db', 'db', 22.5, 5)
+  if (sp.storage) add('storage', 'storage', 22.5, 8.5)
+  if (sp.cache) add('cache', 'cache', 19.5, 5, 1, sp.cache)
+  if (sp.workers) add('queue', 'queue', 19.5, 1.5)
+  if (sp.search) add('search', 'search', 19.5, 8.5)
+  for (const a of apps) {
+    if (sp.cache) wire(a, 'cache')
+    wire(a, data)
+    if (sp.storage) wire(a, 'storage')
+    if (sp.workers) wire(a, 'queue')
+    if (sp.search) wire(a, 'search')
+  }
+  if (sp.cache) wire('cache', data)
+  if (sp.cdn) wire('cdn', 'storage')
+  rows(sp.workers ?? 0).forEach((_, i) => { const w = add(i ? `worker${i + 1}` : 'worker', 'worker', 25.5, [0.5, 3.5, 6.5, 9.5][i]); wire('queue', w) })
+  if (sp.monitor) add('monitor', 'monitor', 0.5, 9.5)
+  return { nodes, edges }
+}
+
+const big: NodeConfig = { cacheSize: 3, expiry: 30 }
 const d0: Design = { nodes: [], edges: [] }
-const dCh1Start = design([node('users'), node('app'), node('db')], [['users', 'app'], ['app', 'db']])
-const dCh1Ref = design([node('users'), node('app'), node('db'), node('storage')], [['users', 'app'], ['app', 'db'], ['app', 'storage']])
-const dCh2Ref = design([node('users'), node('lb'), node('app', 4), node('db'), node('storage')], [['users', 'lb'], ['lb', 'app'], ['app', 'db'], ['app', 'storage']])
-const dCh3Ref = design(
-  [node('users'), node('lb'), node('app', 7), node('cache', 1, { cacheSize: 3, expiry: 30 }), node('db'), node('storage')],
-  [['users', 'lb'], ['lb', 'app'], ['app', 'cache'], ['app', 'db'], ['cache', 'db'], ['app', 'storage']],
-)
-const dCh4Ref = design(
-  [node('users'), node('dns'), node('cdn'), node('lb'), node('app', 4), node('cache', 1, { cacheSize: 3, expiry: 30 }), node('db'), node('storage')],
-  [['users', 'dns'], ['dns', 'cdn'], ['dns', 'lb'], ['cdn', 'storage'], ['lb', 'app'], ['app', 'cache'], ['app', 'db'], ['cache', 'db'], ['app', 'storage']],
-)
-const dCh5Ref = design(
-  [...dCh4Ref.nodes, node('queue'), node('worker', 5)],
-  [...dCh4Ref.edges.map((x): [string, string] => [x.from, x.to]), ['app', 'queue'], ['queue', 'worker']],
-)
-const dCh6Ref = design(
-  [...dCh5Ref.nodes.map((n) => (n.id === 'app' ? { ...n, instances: 5 } : n)), node('search')],
-  [...dCh5Ref.edges.map((x): [string, string] => [x.from, x.to]), ['app', 'search']],
-)
-const dCh7Ref = design(
-  [...dCh6Ref.nodes.filter((n) => n.id !== 'db').map((n) => (n.id === 'app' ? { ...n, instances: 9 } : n)), node('shard', 4, { shardKey: 'userId' })],
-  [...dCh6Ref.edges.filter((x) => x.from !== 'db' && x.to !== 'db').map((x): [string, string] => [x.from, x.to]), ['app', 'shard'], ['cache', 'shard']],
-)
-const swapDnsLb = (d: Design, limit: NodeConfig['limit']): Design => ({
-  nodes: [...d.nodes, node('limiter', 1, { limit })],
-  edges: [...d.edges.filter((x) => !(x.from === 'dns' && x.to === 'lb')), e('dns', 'limiter'), e('limiter', 'lb')],
-})
-const dCh8Ref = (() => {
-  const d = swapDnsLb(dCh7Ref, 'medium')
-  return { ...d, nodes: d.nodes.map((n) => (n.id === 'app' ? { ...n, instances: 10 } : n)) }
-})()
-const dCh9Ref: Design = {
-  nodes: [...dCh8Ref.nodes.map((n) => (n.id === 'lb' ? { ...n, instances: 2 } : n.id === 'app' ? { ...n, instances: 8 } : n)), node('monitor')],
-  edges: dCh8Ref.edges,
-}
-const dBossRef: Design = {
-  nodes: dCh9Ref.nodes.map((n) => (n.id === 'app' ? { ...n, instances: 14 } : n.id === 'shard' ? { ...n, instances: 5 } : n.id === 'worker' ? { ...n, instances: 8 } : n.id === 'search' ? { ...n, instances: 2 } : n)),
-  edges: dCh9Ref.edges,
-}
+const dCh1Start = build({})
+const dCh1Ref = build({ storage: true })
+const dCh2Ref = build({ storage: true, lbs: 1, apps: 2 })
+const dCh3Ref = build({ storage: true, lbs: 1, apps: APPS.ch3, cache: big })
+const dCh4Ref = build({ storage: true, lbs: 1, apps: APPS.ch4, cache: big, dns: true, cdn: true })
+const dCh5Ref = build({ storage: true, lbs: 1, apps: APPS.ch5, cache: big, dns: true, cdn: true, workers: WORKERS.ch5 })
+const dCh6Ref = build({ storage: true, lbs: 1, apps: APPS.ch6, cache: big, dns: true, cdn: true, workers: WORKERS.ch5, search: true })
+const dCh7Ref = build({ storage: true, lbs: 1, apps: APPS.ch7, cache: big, dns: true, cdn: true, workers: WORKERS.ch5, search: true, shards: 4 })
+const dCh8Ref = build({ storage: true, lbs: 1, apps: APPS.ch8, cache: big, dns: true, cdn: true, workers: WORKERS.ch5, search: true, shards: 4, limiter: 'medium' })
+const dCh9Ref = build({ storage: true, lbs: 2, apps: APPS.ch9, cache: big, dns: true, cdn: true, workers: WORKERS.ch5, search: true, shards: 4, limiter: 'medium', monitor: true })
+const dBossRef = build({ storage: true, lbs: 2, apps: APPS.boss, cache: big, dns: true, cdn: true, workers: WORKERS.boss, search: true, shards: 5, limiter: 'medium', monitor: true })
 
 const regions = { farShare: 0.5, farMs: 300 }
 const slo = { p95Ms: 300, errorRate: 0.01 }
@@ -83,14 +102,14 @@ export const LEVELS: Level[] = [
     story: 'New campuses join every week and traffic has tripled. Users are starting to see errors. There is only so much one machine can do.',
     placeable: ALL, startDesign: dCh1Ref, reference: dCh2Ref,
     traffic: T(rates(180, 30, 100, 15)), budget: 650, minDesign: ['lb', 'db', 'storage'],
-    hints: ['Check the App Server. How full is it, and can one machine ever keep up?', 'Spread requests across several identical servers.', 'Place a Load Balancer between Users and the App Server, then add instances to the App Server.'],
-    debrief: { note: 'Large social networks run many identical, stateless app servers behind load balancers, so they can add or lose servers without users noticing. Keeping servers stateless is what makes this possible.', diffs: { lb: 'Spreads requests across servers and skips unhealthy ones.', app: 'Several identical servers share the load; capacity is visible as a stack.' } },
+    hints: ['Check the App Server. How full is it, and can one machine ever keep up?', 'Spread requests across several identical servers.', 'Place a Load Balancer between Users and the App Server, then drag in more App Servers and connect the Load Balancer to each one.'],
+    debrief: { note: 'Large social networks run many identical, stateless app servers behind load balancers, so they can add or lose servers without users noticing. Keeping servers stateless is what makes this possible.', diffs: { lb: 'Spreads requests across servers and skips unhealthy ones.', app: 'Several identical App Servers share the load; you can see each one on the board.', app2: 'A second App Server, so the work is shared.' } },
   }),
   lvl({
     id: 'ch3', chapter: 3, title: 'The News Feed',
     story: 'The new News Feed re-reads friends\' posts on every refresh. The database is drowning in the same reads, over and over.',
     placeable: ALL, startDesign: dCh2Ref, reference: dCh3Ref,
-    traffic: T(rates(450, 40, 80, 10)), budget: 900, minDesign: ['cache', 'db', 'storage', 'lb'],
+    traffic: T(rates(520, 40, 80, 10)), budget: 1000, minDesign: ['cache', 'db', 'storage', 'lb'],
     hints: ['The App Servers are fine. What is the Database busy with?', 'Keep popular data in memory so most reads never reach the database.', 'Place a Cache between the App Server and the Database, connect App to Cache and Cache to Database, and make it a big one in settings.'],
     debrief: { note: 'Large social networks put in-memory caches in front of their databases and serve the bulk of reads from memory, often with replicas behind for the rest. Caches are cheap relative to the database load they remove, but they add a new failure: when a cache is flushed, every request falls through at once.', diffs: { cache: 'Serves most feed reads from memory so the database only sees the misses.', db: 'Now carries only writes and the reads the cache could not answer.' } },
   }),
@@ -106,7 +125,7 @@ export const LEVELS: Level[] = [
     id: 'ch5', chapter: 5, title: 'Notifications',
     story: 'Every post now notifies hundreds of friends, and posting waits until every notification is sent. Posting has slowed to a crawl.',
     placeable: ALL, startDesign: dCh4Ref, reference: dCh5Ref,
-    traffic: T(rates(200, 60, 400, 10), 8), budget: 1150, minDesign: ['queue', 'worker'], regions,
+    traffic: T(rates(200, 60, 400, 10), 8), budget: 1250, minDesign: ['queue', 'worker'], regions,
     hints: ['Notice who is doing the work when someone posts. Does the user need to wait for it?', 'Drop a job on a queue and let workers handle it later.', 'Add a Message Queue and Workers; connect App Server to Queue and Queue to Workers, with enough workers to keep up.'],
     debrief: { note: 'Large social networks do the slow, fan-out work (notifying friends, updating feeds) in background workers fed by message queues. The user\'s request returns immediately; the queue absorbs bursts, and workers catch up. If workers fall behind far enough, the queue overflows and notifications are lost.', diffs: { queue: 'Holds jobs so posting returns immediately.', worker: 'Processes notifications in the background; enough of them keeps the queue short.' } },
   }),
@@ -114,7 +133,7 @@ export const LEVELS: Level[] = [
     id: 'ch6', chapter: 6, title: 'Find your friends',
     story: 'People search for each other by name, and every search reads the whole users table. The database cannot keep up.',
     placeable: ALL, startDesign: dCh5Ref, reference: dCh6Ref,
-    traffic: T(rates(200, 30, 400, 10, 150), 8), budget: 1400, minDesign: ['search'], regions,
+    traffic: T(rates(200, 30, 400, 10, 150), 8), budget: 1600, minDesign: ['search'], regions,
     hints: ['Look at which requests are hitting the Database hardest.', 'An index finds a name without scanning every row.', 'Add a Search Index and connect the App Server to it so searches stop touching the Database.'],
     debrief: { note: 'Large social networks keep a dedicated search index next to the main database and update it from the same stream of changes. Reads from the index are fast, at the cost of the index sometimes lagging a moment behind the truth.', diffs: { search: 'Answers name searches from an index instead of scanning the database.' } },
   }),
@@ -122,7 +141,7 @@ export const LEVELS: Level[] = [
     id: 'ch7', chapter: 7, title: '100 million users',
     story: 'Writes have outgrown any single database. Copies of it cannot help, because every write still lands in one place.',
     placeable: ALL, startDesign: dCh6Ref, reference: dCh7Ref,
-    traffic: T(rates(400, 200, 400, 20, 200), 2), budget: 2200, minDesign: ['shard'], regions,
+    traffic: T(rates(400, 200, 400, 20, 200), 2), budget: 2400, minDesign: ['shard'], regions,
     hints: ['Look at the Database: is it reads or writes that fill it? Do replicas help?', 'Split the data across machines by a key, and pick the key carefully.', 'Replace the Database with a Sharded Database, with several shards, and set the shard key to user ID so load spreads evenly.'],
     debrief: { note: 'Large social networks split their biggest tables across many database machines by a key such as user ID, so each machine owns a slice. A poor key creates a hot shard, and celebrity accounts create hot spots even with a good one, which is why they are often handled specially.', diffs: { shard: 'Splits users and posts by user ID so writes spread across machines.' } },
   }),
@@ -130,7 +149,7 @@ export const LEVELS: Level[] = [
     id: 'ch8', chapter: 8, title: 'Spam and fake accounts',
     story: 'Bots are flooding friend requests and posts, burning capacity your real users need. Stop them without stopping people.',
     placeable: ALL, startDesign: dCh7Ref, reference: dCh8Ref,
-    traffic: T(rates(400, 200, 400, 20, 200, 500), 2), budget: 2300, minDesign: ['limiter'], regions,
+    traffic: T(rates(400, 200, 400, 20, 200, 500), 2), budget: 2500, minDesign: ['limiter'], regions,
     hints: ['Look at the traffic: some of it is not real people.', 'A limit per user stops floods but a limit that is too strict blocks real people too.', 'Add a Rate Limiter in front of the Load Balancer and set a medium limit: strict limits block real users, lenient ones let bots through.'],
     debrief: { note: 'Large social networks put rate limits and gateways at the edge: per-user and per-address quotas, bursts allowed up to a point. The art is the threshold: too tight blocks real people during a busy moment, too loose lets abuse through.', diffs: { limiter: 'Drops most bot traffic at the door so it never uses app or database capacity.' } },
   }),
@@ -145,8 +164,8 @@ export const LEVELS: Level[] = [
       { tick: 64, kind: 'cacheFlush', duration: 1 },
       { tick: 70, kind: 'regionOut', duration: 6 },
     ],
-    hints: ['Find the machine whose loss takes everything down.', 'Run at least one more than you need, so losing one is survivable.', 'Give the Load Balancer a second instance, keep spare App Server capacity, and add Monitoring so alerts fire fast.'],
-    debrief: { note: 'Large social networks assume machines fail constantly. They run N+1 capacity everywhere, spread across regions, and test it deliberately with chaos engineering. Monitoring turns a long silent outage into a short, alerted one.', diffs: { lb: 'Two balancers: losing one no longer takes the front door down.', app: 'Spare capacity: a crash or a lost region leaves enough servers running.', monitor: 'Alerts fire early and crashed machines are replaced faster.' } },
+    hints: ['Find the machine whose loss takes everything down.', 'Run at least one more than you need, so losing one is survivable.', 'Add a second Load Balancer, keep a spare App Server or two, and add Monitoring so alerts fire fast.'],
+    debrief: { note: 'Large social networks assume machines fail constantly. They run N+1 capacity everywhere, spread across regions, and test it deliberately with chaos engineering. Monitoring turns a long silent outage into a short, alerted one.', diffs: { lb: 'Two balancers: losing one no longer takes the front door down.', lb2: 'The second Load Balancer.', app: 'Spare servers: a crash or a lost region leaves enough running.', monitor: 'Alerts fire early and crashed machines are replaced faster.' } },
   }),
   lvl({
     id: 'boss', chapter: 10, title: 'New Year\'s Eve at midnight',
@@ -161,7 +180,7 @@ export const LEVELS: Level[] = [
       { tick: 62, kind: 'cacheFlush', duration: 1 },
       { tick: 68, kind: 'regionOut', duration: 6 },
     ],
-    hints: ['Everything at once: look for the weakest tier during the spike.', 'Your Chapter 9 design is the base; scale each tier for peak plus a lost machine.', 'Add servers, shards and workers until a spike plus a crash plus a lost region still leaves headroom.'],
+    hints: ['Everything at once: look for the weakest tier during the spike.', 'Your Chapter 9 design is the base; scale each tier for peak plus a lost machine.', 'Add App Servers, shards and Workers until a spike plus a crash plus a lost region still leaves headroom.'],
     debrief: { note: 'Real launches and big events are rehearsed exactly like this: load tests at multiples of expected peak, with failures injected on purpose, so the first time everything goes wrong is not the real time.', diffs: { app: 'Sized for the spike and a lost region.', shard: 'More shards keep the busiest shard under capacity.', worker: 'Enough workers that the queue never spills.' } },
   }),
 ]
@@ -204,7 +223,7 @@ export const PART_INFO: Record<CType, string> = {
   cdn: 'Edge servers that keep popular files, like photos, close to the people viewing them.',
   limiter: 'Turns away abusive traffic before it reaches your servers.',
   lb: 'Spreads requests across several App Servers, so you can run more than one.',
-  app: 'Runs Friendbook and answers requests. Add instances behind a Load Balancer to handle more.',
+  app: 'Runs Friendbook and answers requests. To handle more, add more App Servers behind a Load Balancer.',
   cache: 'Fast memory that answers repeated reads without asking the database.',
   queue: 'Holds slow jobs so users do not have to wait for them.',
   worker: 'Takes jobs off the queue and does them in the background.',

@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test'
 async function open(page: Page) {
   await page.goto('/?e2e')
 }
-const node = (page: Page, label: string) => page.locator(`g.machine[aria-label^="${label}"]`)
+const node = (page: Page, label: string) => page.locator(`g.machine[aria-label^="${label}"]`).first()
 
 async function openSandbox(page: Page) {
   await page.getByRole('button', { name: /open the sandbox/ }).click()
@@ -83,6 +83,22 @@ test('drag and drop: drag a card onto the board, move it, wire it up, delete it'
   await cache.click()
   await page.keyboard.press('Delete')
   await expect(cache).toHaveCount(0)
+})
+
+test('scaling means more App Servers on the board, and sharing them needs a Load Balancer', async ({ page }) => {
+  await open(page)
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await page.getByRole('button', { name: 'Start the first day' }).click()
+  await page.locator('g.machine[aria-label^="App Server"]').first().click()
+  await expect(page.getByRole('group', { name: 'Instances' })).toHaveCount(0) // no instance counter: you add machines instead
+  const board = (await page.locator('.board svg').boundingBox())!
+  const card = (await page.getByRole('button', { name: 'Add App Server' }).boundingBox())!
+  await drag(page, centre(card), { x: board.x + board.width * 0.55, y: board.y + board.height * 0.85 })
+  await expect(page.locator('g.machine[aria-label^="App Server"]')).toHaveCount(2)
+  const port = (await node(page, 'Users').locator('.port circle').last().boundingBox())!
+  const second = (await page.locator('g.machine[aria-label^="App Server"]').nth(1).boundingBox())!
+  await drag(page, centre(port), centre(second))
+  await expect(page.getByText(/Add a Load Balancer to share traffic between several/)).toBeVisible()
 })
 
 test('dragging a wire onto a part that cannot accept it explains why', async ({ page }) => {
